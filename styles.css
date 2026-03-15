@@ -1,0 +1,863 @@
+/* 台語字練習簿 - Worksheet 產生器 */
+
+@font-face {
+  font-family: "Iansui";
+  src: url("fonts/Iansui-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --ink: #1a1a1a;
+  --line: #333;
+  --line-light: #ccc;
+  --bg: #f5f2eb;
+  --paper: #fff;
+  --accent: #5c8273;
+  --accent-hover: #405b51;
+  --sidebar-width: 280px;
+  --header-height: 5rem;
+  --line-height-px: 40px;
+  --font-size-px: 24px;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Iansui", "Noto Sans TC", sans-serif;
+  background: var(--bg);
+  color: var(--ink);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: var(--sidebar-width) 1fr;
+  grid-template-rows: var(--header-height) 1fr;
+  grid-template-areas:
+    "header header"
+    "sidebar main";
+  min-height: 100vh;
+}
+
+/* 上方導覽列：捲動時固定 */
+.header {
+  grid-area: header;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.5rem;
+  background: var(--paper);
+  border-bottom: 1px solid var(--line-light);
+  height: var(--header-height);
+  box-sizing: border-box;
+}
+
+.header-left {
+  min-width: 0;
+}
+
+.header h1 {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: normal;
+  color: var(--accent);
+}
+
+.subtitle {
+  margin: 0.25rem 0 0;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.header .btn-settings,
+.header .btn-export {
+  width: auto;
+  padding: 0.5rem 1rem;
+}
+
+.btn-settings {
+  color: var(--accent);
+  background: var(--paper);
+  border: 1px solid var(--line-light);
+}
+
+.btn-settings:hover {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
+/* 左側工具列：捲動時固定 */
+.sidebar {
+  grid-area: sidebar;
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  bottom: 0;
+  width: var(--sidebar-width);
+  z-index: 9;
+  padding: 1rem;
+  background: var(--paper);
+  border-right: 1px solid var(--line-light);
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.panel {
+  margin-bottom: 1.5rem;
+}
+
+/* 練習項目區塊：撐滿剩餘高度，item-list 內部捲動 */
+.item-list-panel {
+  flex: 1 1 0;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 0;
+}
+
+.item-list-panel .item-list {
+  flex: 1 1 0;
+  min-height: 0;
+}
+
+/* 設定區塊：可收合 */
+.settings-panel {
+  margin-bottom: 1.5rem;
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 0.5rem 0;
+  margin: 0 0 0.25rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: none;
+  border: none;
+  cursor: pointer;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.settings-toggle:hover {
+  color: var(--accent);
+}
+
+.settings-toggle-icon {
+  display: inline-block;
+  width: 0.5rem;
+  height: 0.5rem;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  transform: rotate(-45deg);
+  transition: transform 0.2s ease;
+}
+
+.settings-panel.is-collapsed .settings-toggle-icon {
+  transform: rotate(45deg);
+}
+
+.settings-content {
+  overflow: hidden;
+  transition: max-height 0.25s ease;
+}
+
+.settings-panel.is-collapsed .settings-content {
+  max-height: 0;
+  margin-top: 0;
+}
+
+.settings-panel:not(.is-collapsed) .settings-content {
+  max-height: 500px;
+}
+
+.settings-inner {
+  padding-top: 1rem;
+}
+
+.settings-inner .panel {
+  margin-bottom: 1rem;
+}
+
+.settings-inner .panel:last-child {
+  margin-bottom: 0;
+}
+
+.panel h2 {
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.radio-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+}
+
+.radio-label input {
+  width: 1rem;
+  height: 1rem;
+  accent-color: var(--accent);
+}
+
+.slider-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.slider-group input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  height: 6px;
+  accent-color: var(--accent);
+}
+
+.slider-value {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  color: #555;
+  min-width: 2.5rem;
+}
+
+.input-group {
+  margin-top: 0.25rem;
+}
+
+.page-header-input {
+  width: 100%;
+  padding: 0.4rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: 1px solid var(--line-light);
+  border-radius: 4px;
+  box-sizing: border-box;
+}
+
+.page-header-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(92, 130, 115, 0.2);
+}
+
+.page-header-input::placeholder {
+  color: #999;
+}
+
+.item-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+}
+
+.item-block {
+  padding: 0.6rem;
+  background: var(--bg);
+  border-radius: 6px;
+  border: 1px solid var(--line-light);
+}
+
+.item-block .item-field {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.item-block .item-field:last-of-type {
+  margin-bottom: 0;
+}
+
+.item-block label {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: #555;
+  min-width: 4.2em;
+}
+
+.item-block input[type="text"],
+.item-block input[type="number"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0.35rem 0.5rem;
+  font-family: inherit;
+  font-size: 0.9rem;
+  border: 1px solid var(--line-light);
+  border-radius: 4px;
+}
+
+.item-block input[type="number"] {
+  width: 3.5rem;
+  flex: 0 0 3.5rem;
+  text-align: center;
+}
+
+.item-block input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(45, 90, 39, 0.2);
+}
+
+.item-block .item-field-last .btn-remove {
+  margin-left: auto;
+}
+
+.item-block .btn-remove {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  font-size: 1.1rem;
+  line-height: 1;
+  color: #888;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.item-block .btn-remove:hover {
+  color: #c00;
+  background: #fee;
+}
+
+/* 六點拖曳把手：2×3 點陣（單一偽元素 + box-shadow） */
+.item-drag-handle {
+  flex-shrink: 0;
+  width: 10px;
+  height: 14px;
+  display: inline-block;
+  cursor: grab;
+  color: #999;
+  padding: 2px;
+  border: none;
+  background: transparent;
+  border-radius: 4px;
+  position: relative;
+}
+
+.item-drag-handle::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 3px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow:
+    5px 0 0 currentColor,
+    0 5px 0 currentColor,
+    5px 5px 0 currentColor,
+    0 10px 0 currentColor,
+    5px 10px 0 currentColor;
+}
+
+.item-drag-handle:hover {
+  color: var(--accent);
+}
+
+.item-drag-handle:active {
+  cursor: grabbing;
+}
+
+.item-block.item-dragging {
+  opacity: 0.6;
+}
+
+.item-block.item-drag-over {
+  box-shadow: 0 0 0 2px var(--accent);
+  border-radius: 6px;
+}
+
+/* 預覽：該行上方的說明文字 */
+.line-description {
+  font-size: 0.65em;
+  color: #555;
+  line-height: 1.3;
+  margin-bottom: -0.5em;
+  margin-top: 1.2em;
+  font-family: "Iansui", sans-serif;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-primary {
+  width: 100%;
+  color: var(--paper);
+  background: var(--accent);
+}
+
+.btn-primary:hover {
+  background: var(--accent-hover);
+}
+
+.add-item-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+  margin-bottom: 0.75rem;
+}
+
+.btn-add-item {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+.dropdown-wrap {
+  position: relative;
+  flex-shrink: 0;
+  overflow: visible;
+  display: flex;
+  align-items: stretch;
+}
+
+.btn-insert-menu-toggle {
+  width: 2.5rem;
+  padding: 0;
+  margin: 0;
+  color: var(--paper);
+  background: var(--accent);
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.85);
+  border-radius: 0px 6px 6px 0px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  box-sizing: border-box;
+}
+
+.btn-insert-menu-toggle:hover {
+  background: var(--accent-hover);
+}
+
+.dropdown-arrow {
+  width: 0;
+  height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 6px solid currentColor;
+}
+
+.insert-menu {
+  position: fixed;
+  margin: 4px 0 0;
+  padding: 0.25rem 0;
+  min-width: 11rem;
+  width: max-content;
+  max-width: min(280px, calc(100vw - 2rem));
+  background: var(--paper);
+  border: 1px solid var(--line-light);
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  list-style: none;
+  z-index: 1000;
+  overflow: visible;
+  /* top / left 由 JS 依觸發按鈕位置設定，避免被側欄 overflow 裁切 */
+}
+
+.insert-menu[hidden] {
+  display: none;
+}
+
+/* 載入教材選單（header 內） */
+.header-textbook-dropdown {
+  display: flex;
+  align-items: center;
+}
+.textbook-menu {
+  min-width: 14rem;
+}
+
+.insert-menu li {
+  margin: 0;
+}
+
+.insert-menu button {
+  display: block;
+  width: 100%;
+  padding: 0.5rem 1rem;
+  text-align: left;
+  font-family: inherit;
+  font-size: 0.9rem;
+  color: var(--ink);
+  background: none;
+  border: none;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.insert-menu button:hover {
+  background: var(--bg);
+  color: var(--accent);
+}
+
+/* 分頁標記、圖片項目在左側列表的樣式 */
+.item-block.item-type-pagebreak,
+.item-block.item-type-image {
+  padding: 0.5rem 0.6rem;
+}
+
+.item-block.item-type-pagebreak .item-special-label,
+.item-block.item-type-image .item-special-label {
+  font-size: 0.85rem;
+  color: #555;
+  margin-right: auto;
+}
+
+.item-block.item-type-image .item-special-label {
+  max-width: 10em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 預覽區：插入的圖片區塊 */
+.preview-image-block {
+  margin-top: 0.5em;
+  margin-bottom: 0.5em;
+  text-align: center;
+}
+
+.preview-image-block img {
+  max-width: 100%;
+  height: auto;
+  max-height: 100mm;
+  object-fit: contain;
+  display: inline-block;
+  vertical-align: middle;
+}
+
+.btn-export {
+  width: 100%;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--paper);
+  background: var(--accent);
+}
+
+.btn-export:hover {
+  background: var(--accent-hover);
+}
+
+/* Main - A4 預覽區：僅此區可捲動 */
+.main {
+  grid-area: main;
+  padding: 1.5rem;
+  overflow: auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  height: calc(100vh - var(--header-height));
+  box-sizing: border-box;
+}
+
+.preview-wrap {
+  border-radius: 2px;
+  min-height: min-content;
+  overflow: visible;
+}
+
+/* 多頁 A4 預覽：每頁分開顯示，不裁切後續頁 */
+.worksheet-pages {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+  overflow: visible;
+  min-height: min-content;
+}
+
+/* 單一 A4 頁面：210mm x 297mm，頭尾各 2cm 安全距離；overflow 避免內容溢出到下一頁 */
+.worksheet-page {
+  position: relative;
+  width: 210mm;
+  height: 297mm;
+  padding: 20mm 18mm; /* 上下 2cm、左右約 1.8cm */
+  background: var(--paper);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.1);
+  border-radius: 2px;
+  box-sizing: border-box;
+  page-break-after: always;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* 頁首：顯示在每頁預覽的右上角 */
+.worksheet-page-header {
+  position: absolute;
+  top: 15mm;
+  right: 18mm;
+  font-size: 0.85em;
+  color: #555;
+  font-family: "Iansui", "Noto Sans TC", sans-serif;
+  white-space: nowrap;
+  max-width: calc(100% - 36mm);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+.worksheet-page:last-child {
+  page-break-after: auto;
+}
+
+/* 每頁內容區：最小高度 257mm，實際高度由該頁行數決定，避免裁切下一頁內容 */
+.worksheet-page-content {
+  min-height: 257mm;
+  width: 100%;
+  font-size: var(--font-size-px);
+}
+
+.preview-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+
+/* 預覽區：同一練習項目的多行包成一群組，方便顯示編輯中提示 */
+.preview-item-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  border-radius: 6px;
+  transition:
+    outline-color 0.15s ease,
+    outline-offset 0.15s ease;
+}
+
+/* 使用 outline + outline-offset，不佔據版面空間，不會造成位移或底線變短 */
+.preview-item-group.preview-item-editing {
+  outline: 1px solid var(--accent);
+  outline-offset: 4px;
+}
+
+.preview-line-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  margin-bottom: var(--line-spacing, 0px);
+}
+
+.preview-lines > .preview-line-wrap:last-child,
+.preview-item-group .preview-line-wrap:last-child {
+  margin-bottom: 0;
+}
+
+/* 每一行：用 grid 把內容與底線疊在同一格，align-items: baseline 讓底線畫在範例字基線上 */
+/* font-size 讓三條線的 0.35em 隨字級縮放，不會因字變大而錯位 */
+.preview-line {
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+  align-items: baseline;
+  min-height: var(--line-height-px);
+  position: relative;
+  font-size: var(--font-size-px);
+}
+
+.preview-line .row-content {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  align-items: baseline;
+  min-width: 0;
+  position: relative;
+  z-index: 1;
+}
+
+.preview-line .example-text {
+  flex-shrink: 0;
+  font-family: "Iansui", sans-serif;
+  font-size: var(--font-size-px);
+  line-height: var(--line-height-px);
+  color: #aaa;
+  margin-right: 0.5em;
+}
+
+/* 無範例文字時仍保留同高佔位，讓行高與間距一致 */
+.preview-line .example-text-placeholder {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  color: transparent;
+  user-select: none;
+  pointer-events: none;
+}
+
+.preview-line .practice-zone {
+  flex: 1;
+  min-width: 80px;
+  min-height: var(--line-height-px);
+  position: relative;
+}
+
+/* 一條底線與三條線共用同一結構：baseline-guides（2ex 高、baseline 對齊），單線時只顯示最底下那條 */
+.preview-line .baseline-guides {
+  grid-column: 1;
+  grid-row: 1;
+  position: relative;
+  width: 100%;
+  height: 2ex;
+  font-family: "Iansui", sans-serif;
+  font-size: var(--font-size-px);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.preview-line .baseline-guides .baseline-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  border-bottom: 1px solid var(--line-light);
+}
+
+/* 一條底線：隱藏上面兩條，只留底線 */
+.preview-line.single .baseline-guides .baseline-top,
+.preview-line.single .baseline-guides .baseline-line {
+  display: none;
+}
+
+/* 英文式三條線 */
+
+/* 三條線最上面改由 .baseline-top 畫在 2ex，不再用 ::before */
+.preview-line.triple::before {
+  content: none;
+  display: none;
+}
+
+.preview-line.triple::after {
+  content: none;
+  display: none;
+}
+
+/* 三條線：頂線與中間線的定位（底線沿用共用 .baseline-bottom） */
+/* 最上面實線：2 倍 x-height（與中間虛線同灰色） */
+.preview-line.triple .baseline-guides .baseline-top {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 2ex;
+  height: 0;
+  border-bottom: 1px solid var(--line-light);
+}
+
+/* 中間虛線：x-height */
+.preview-line.triple .baseline-guides .baseline-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 1ex;
+  height: 0;
+  border-bottom: 1px dashed var(--line-light);
+}
+
+/* 最底下實線：基線上（與中間虛線同灰色） */
+.preview-line.triple .baseline-guides .baseline-bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 0;
+  border-bottom: 1px solid var(--line-light);
+}
+
+/* 列印 / PDF 用：隱藏多餘空白、確保 A4 分頁 */
+@media print {
+  body {
+    background: white;
+  }
+
+  .app {
+    display: block;
+  }
+
+  .header,
+  .sidebar,
+  .main .preview-wrap::before,
+  .btn,
+  .item-list,
+  .slider-group {
+    display: none !important;
+  }
+
+  .main {
+    padding: 0;
+  }
+
+  .preview-wrap {
+    box-shadow: none;
+  }
+
+  .worksheet-pages {
+    gap: 0;
+    padding: 0;
+  }
+
+  .preview-item-group.preview-item-editing {
+    outline: none !important;
+  }
+
+  .worksheet-page {
+    box-shadow: none;
+    border-radius: 0;
+  }
+}

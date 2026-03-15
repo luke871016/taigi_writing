@@ -1,0 +1,137 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "description": "聲母——脣音",
+      "exampleText": "p ph m b",
+      "lineCount": 2,
+      "id": "item-6"
+    },
+    {
+      "description": "聲母——舌尖音",
+      "exampleText": "t th n l",
+      "lineCount": 2,
+      "id": "item-5"
+    },
+    {
+      "description": "聲母——舌根音",
+      "exampleText": "k kh g ng",
+      "lineCount": 2,
+      "id": "item-6"
+    },
+    {
+      "description": "聲母——喉音、齒音",
+      "exampleText": "h ts tsh s j",
+      "lineCount": 2,
+      "id": "item-7"
+    },
+    {
+      "description": "韻母——單元音",
+      "exampleText": "a i u e o oo",
+      "lineCount": 3,
+      "id": "item-7"
+    },
+    {
+      "description": "韻母——複元音",
+      "exampleText": "ai au ia iu io ua ui ue iau uai",
+      "lineCount": 3,
+      "id": "item-8"
+    },
+    {
+      "description": "鼻化元音 ①",
+      "exampleText": "ann inn enn onn ainn aunn",
+      "lineCount": 3,
+      "id": "item-9"
+    },
+    {
+      "description": "鼻化元音 ②",
+      "exampleText": "iann iunn uinn iaunn uann uainn",
+      "lineCount": 3,
+      "id": "item-10"
+    },
+    {
+      "description": "鼻音韻母 ①",
+      "exampleText": "am im on iam an in un ian uan",
+      "lineCount": 3,
+      "id": "item-11"
+    },
+    {
+      "description": "鼻音韻母 ②",
+      "exampleText": "ang ing ong iang iong uang",
+      "lineCount": 3,
+      "id": "item-12"
+    },
+    {
+      "description": "入聲韻母 -p",
+      "exampleText": "ap ip op iap",
+      "lineCount": 3,
+      "id": "item-13"
+    },
+    {
+      "description": "入聲韻母 -t",
+      "exampleText": "at it ut iat uat",
+      "lineCount": 3,
+      "id": "item-14"
+    },
+    {
+      "description": "入聲韻母 -k",
+      "exampleText": "ak ik ok iak iok",
+      "lineCount": 3,
+      "id": "item-15"
+    },
+    {
+      "description": "入聲韻母 -h",
+      "exampleText": "ah ih uh eh oh auh iah iuh ioh uah uih ueh iauh",
+      "lineCount": 3,
+      "id": "item-16"
+    },
+    {
+      "description": "鼻化聲母",
+      "exampleText": "m ng",
+      "lineCount": 2,
+      "id": "item-17"
+    },
+    {
+      "description": "七聲調（東 黨 棟 督 同 洞 毒）",
+      "exampleText": "tong tóng tòng tok tông tōng to̍k",
+      "lineCount": 2,
+      "id": "item-18"
+    },
+    {
+      "description": "七聲調（跤 手 喙 腹 頭 鼻 目）",
+      "exampleText": "kha tshiú tshuì pak thâu phīnn ba̍k",
+      "lineCount": 2,
+      "id": "item-19"
+    },
+    {
+      "description": "七聲調（獅 虎 豹 鱉 猴 象 鹿）",
+      "exampleText": "sai hóo pà pih kâu tshiūnn lo̍k",
+      "lineCount": 2,
+      "id": "item-20"
+    },
+    {
+      "description": "自由練習、筆記",
+      "exampleText": "",
+      "lineCount": 7,
+      "id": "item-6"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-23"
+    },
+    {
+      "type": "image",
+      "imagePath": "images/聲調音值圖.png",
+      "id": "item-21"
+    },
+    {
+      "type": "image",
+      "imagePath": "images/變調圖.png",
+      "id": "item-22"
+    }
+  ],
+  "lineStyle": "triple",
+  "lineSpacingDelta": 0.07,
+  "fontSize": 24,
+  "pageHeader": "台羅書寫練習"
+}

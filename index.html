@@ -1,0 +1,187 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>台語字練習簿編輯器</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="header-left">
+          <h1>台語字練習簿編輯器</h1>
+          <p class="subtitle">
+            設定欲練習的文字、輸出 pdf 檔案了後共印出來練習
+          </p>
+        </div>
+        <div class="header-actions">
+          <div class="dropdown-wrap header-textbook-dropdown">
+            <button
+              type="button"
+              id="loadTextbookBtn"
+              class="btn btn-settings"
+              aria-label="載入教材"
+              aria-expanded="false"
+              aria-haspopup="true"
+            >
+              建中的教材
+            </button>
+            <ul
+              id="loadTextbookMenu"
+              class="insert-menu textbook-menu"
+              role="menu"
+              hidden
+            ></ul>
+          </div>
+          <button type="button" id="importSettings" class="btn btn-settings">
+            匯入設定
+          </button>
+          <input
+            type="file"
+            id="importSettingsFile"
+            accept=".json,application/json"
+            hidden
+          />
+          <button type="button" id="exportSettings" class="btn btn-settings">
+            匯出設定
+          </button>
+          <button type="button" id="exportPdf" class="btn btn-export">
+            輸出 PDF
+          </button>
+        </div>
+      </header>
+
+      <aside class="sidebar">
+        <section class="panel settings-panel is-collapsed" id="settingsPanel">
+          <button
+            type="button"
+            class="settings-toggle"
+            id="settingsToggle"
+            aria-expanded="false"
+            aria-controls="settingsContent"
+          >
+            <span class="settings-toggle-label">設定</span>
+            <span class="settings-toggle-icon" aria-hidden="true"></span>
+          </button>
+          <div id="settingsContent" class="settings-content">
+            <div class="settings-inner">
+              <div class="panel">
+                <h2>頁首</h2>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="pageHeader"
+                    class="page-header-input"
+                    placeholder="輸入頁首文字"
+                    maxlength="80"
+                  />
+                </div>
+              </div>
+              <div class="panel">
+                <h2>寸尺</h2>
+                <div class="slider-group">
+                  <input
+                    type="range"
+                    id="fontSize"
+                    min="16"
+                    max="40"
+                    value="24"
+                    step="2"
+                  />
+                  <span id="fontSizeValue" class="slider-value">24px</span>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h2>逝距</h2>
+                <div class="slider-group">
+                  <input
+                    type="range"
+                    id="lineSpacing"
+                    min="-20"
+                    max="20"
+                    value="0"
+                    step="1"
+                  />
+                  <span id="lineSpacingValue" class="slider-value">0.00</span>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h2>底線</h2>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input
+                      type="radio"
+                      name="lineStyle"
+                      value="single"
+                      checked
+                    />
+                    <span>一條線</span>
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="lineStyle" value="triple" />
+                    <span>三條線</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel item-list-panel">
+          <h2>練習項目</h2>
+          <div class="add-item-row">
+            <button
+              type="button"
+              id="addItem"
+              class="btn btn-primary btn-add-item"
+            >
+              ＋ 添新的項目
+            </button>
+            <div class="dropdown-wrap">
+              <button
+                type="button"
+                id="insertMenuToggle"
+                class="btn btn-insert-menu-toggle"
+                aria-label="插入選單"
+                aria-expanded="false"
+                aria-haspopup="true"
+              >
+                <span class="dropdown-arrow" aria-hidden="true"></span>
+              </button>
+              <ul id="insertMenu" class="insert-menu" role="menu" hidden>
+                <li role="none">
+                  <button type="button" role="menuitem" id="insertPageBreak">
+                    插入分頁標記
+                  </button>
+                </li>
+                <li role="none">
+                  <button type="button" role="menuitem" id="insertToneChart">
+                    插入聲調音值圖
+                  </button>
+                </li>
+                <li role="none">
+                  <button type="button" role="menuitem" id="insertSandhiChart">
+                    插入變調圖
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+          <div id="itemList" class="item-list"></div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <div class="preview-wrap">
+          <div id="worksheetPreview" class="worksheet-pages"></div>
+        </div>
+      </main>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
