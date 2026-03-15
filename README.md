@@ -1,26 +1,30 @@
-# 台語字練習簿 Worksheet 產生器
+# 台語字練習簿編輯器
 
 靜態網頁程式，可產生能列印的 A4 台語文書寫練習單，具所見即所得編輯與 PDF 輸出。
 
 ## 使用方式
 
 1. **字體**：請將 `Iansui-Regular.woff2` 放在專案內的 `fonts/` 資料夾：
+
    ```
    台語字練習簿/
    └── fonts/
        └── Iansui-Regular.woff2
    ```
+
    預覽與輸出的 PDF 都會使用此字體顯示範例文字。
 
 2. **開啟網頁**：用瀏覽器直接開啟 `index.html`（若從檔案路徑開啟，部分瀏覽器可能限制載入本地字體，建議用本機 HTTP 伺服器）。
 
    本機預覽範例：
+
    ```bash
    # Python 3
    python3 -m http.server 8000
    # 或 npx
    npx serve .
    ```
+
    然後在瀏覽器開啟 http://localhost:8000
 
 3. **編輯內容**

@@ -678,7 +678,7 @@
       exLabel.textContent = "字詞見本";
       var exInput = document.createElement("input");
       exInput.type = "text";
-      exInput.placeholder = "Tâi-gí";
+      exInput.placeholder = "Kiàn-pún";
       exInput.value = item.exampleText || "";
       exInput.addEventListener("input", function () {
         setItemField(getBlockIndex(wrap), "exampleText", exInput.value);
