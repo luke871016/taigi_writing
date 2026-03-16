@@ -472,7 +472,7 @@
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn-remove";
-        btn.setAttribute("aria-label", "移除此分頁標記");
+        btn.setAttribute("aria-label", "共這个分頁標記刣掉");
         btn.textContent = "×";
         btn.addEventListener("click", function () {
           removeItem(getBlockIndex(wrap));
@@ -574,7 +574,7 @@
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn-remove";
-        btn.setAttribute("aria-label", "移除此圖片");
+        btn.setAttribute("aria-label", "共這个圖刣掉");
         btn.textContent = "×";
         btn.addEventListener("click", function () {
           removeItem(getBlockIndex(wrap));
@@ -670,11 +670,11 @@
         row.className = "item-field item-field-last";
         var label = document.createElement("span");
         label.className = "item-special-label";
-        label.textContent = "內文";
+        label.textContent = "段落文字";
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn-remove";
-        btn.setAttribute("aria-label", "移除此內文區塊");
+        btn.setAttribute("aria-label", "共這个文字區塊刣掉");
         btn.textContent = "×";
         btn.addEventListener("click", function () {
           removeItem(getBlockIndex(wrap));
@@ -761,7 +761,7 @@
         textareaRow.className = "item-field item-field-content";
         var textarea = document.createElement("textarea");
         textarea.rows = 5;
-        textarea.placeholder = "輸入內文，支援 **粗體**、*斜體*、標題、列表等 Markdown 語法";
+        textarea.placeholder = "有支援 Markdown 語法喔";
         textarea.value = typeof item.content === "string" ? item.content : "";
         textarea.addEventListener("input", function () {
           setItemField(getBlockIndex(wrap), "content", textarea.value);
@@ -841,7 +841,7 @@
       var btn = document.createElement("button");
       btn.type = "button";
       btn.className = "btn-remove";
-      btn.setAttribute("aria-label", "移除此練習項目");
+      btn.setAttribute("aria-label", "共這个練習項目刣掉");
       btn.textContent = "×";
       btn.addEventListener("click", function () {
         removeItem(getBlockIndex(wrap));

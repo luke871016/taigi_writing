@@ -2,27 +2,32 @@
   "version": 1,
   "items": [
     {
+      "type": "content",
+      "content": "這个學習單會𤆬你練習台羅所有的符號，請配合 [臺灣台語羅馬字拼音教學網](https://tailo.moe.edu.tw/) 熟似每一个符號的發音，每一个聲母佮韻母請毋但干焦寫彼个符號，只要點網頁內底的「小練習」，遐攏有三个例詞，請共寫落來。比論講 p 聲母有 pòo-im、po-lê 佮 lāu-pē 三个詞、ph 聲母有 hong-pho、phàu-mī 佮 phah-kiû 三个詞。",
+      "id": "item-7"
+    },
+    {
       "description": "聲母——脣音",
       "exampleText": "p ph m b",
-      "lineCount": 2,
-      "id": "item-6"
+      "lineCount": 3,
+      "id": "item-8"
     },
     {
       "description": "聲母——舌尖音",
       "exampleText": "t th n l",
-      "lineCount": 2,
+      "lineCount": 3,
       "id": "item-5"
     },
     {
       "description": "聲母——舌根音",
       "exampleText": "k kh g ng",
-      "lineCount": 2,
+      "lineCount": 3,
       "id": "item-6"
     },
     {
       "description": "聲母——喉音、齒音",
       "exampleText": "h ts tsh s j",
-      "lineCount": 2,
+      "lineCount": 3,
       "id": "item-7"
     },
     {
@@ -32,10 +37,20 @@
       "id": "item-7"
     },
     {
-      "description": "韻母——複元音",
-      "exampleText": "ai au ia iu io ua ui ue iau uai",
+      "type": "pageBreak",
+      "id": "item-12"
+    },
+    {
+      "description": "韻母——複元音 ①",
+      "exampleText": "ai au ia iu io",
       "lineCount": 3,
       "id": "item-8"
+    },
+    {
+      "description": "韻母——複元音 ②",
+      "exampleText": "ua ui ue iau uai",
+      "lineCount": 3,
+      "id": "item-5"
     },
     {
       "description": "鼻化元音 ①",
@@ -62,6 +77,10 @@
       "id": "item-12"
     },
     {
+      "type": "pageBreak",
+      "id": "item-11"
+    },
+    {
       "description": "入聲韻母 -p",
       "exampleText": "ap ip op iap",
       "lineCount": 3,
@@ -80,39 +99,49 @@
       "id": "item-15"
     },
     {
-      "description": "入聲韻母 -h",
-      "exampleText": "ah ih uh eh oh auh iah iuh ioh uah uih ueh iauh",
+      "description": "入聲韻母 -h ①",
+      "exampleText": "ah ih uh eh oh auh iah",
       "lineCount": 3,
       "id": "item-16"
     },
     {
+      "description": "入聲韻母 -h ②",
+      "exampleText": "iuh ioh uah uih ueh iauh",
+      "lineCount": 3,
+      "id": "item-6"
+    },
+    {
       "description": "鼻化聲母",
       "exampleText": "m ng",
-      "lineCount": 2,
+      "lineCount": 3,
       "id": "item-17"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-10"
     },
     {
       "description": "七聲調（東 黨 棟 督 同 洞 毒）",
       "exampleText": "tong tóng tòng tok tông tōng to̍k",
-      "lineCount": 2,
+      "lineCount": 3,
       "id": "item-18"
     },
     {
       "description": "七聲調（跤 手 喙 腹 頭 鼻 目）",
       "exampleText": "kha tshiú tshuì pak thâu phīnn ba̍k",
-      "lineCount": 2,
+      "lineCount": 3,
       "id": "item-19"
     },
     {
       "description": "七聲調（獅 虎 豹 鱉 猴 象 鹿）",
       "exampleText": "sai hóo pà pih kâu tshiūnn lo̍k",
-      "lineCount": 2,
+      "lineCount": 3,
       "id": "item-20"
     },
     {
       "description": "自由練習、筆記",
       "exampleText": "",
-      "lineCount": 7,
+      "lineCount": 11,
       "id": "item-6"
     },
     {
