@@ -10,7 +10,17 @@
     <div class="app">
       <header class="header">
         <div class="header-left">
-          <h1>台語寫字練習簿編輯器</h1>
+          <div class="header-title-row">
+            <h1>台語寫字練習簿編輯器</h1>
+            <button
+              type="button"
+              id="infoButton"
+              class="btn-info-icon"
+              aria-label="關於這个網頁的說明與更新資訊"
+            >
+              ⓘ
+            </button>
+          </div>
           <p class="subtitle">
             設定欲練習的文字、輸出 pdf 檔案了後共印出來練習
           </p>
@@ -184,6 +194,71 @@
           <div id="worksheetPreview" class="worksheet-pages"></div>
         </div>
       </main>
+    </div>
+
+    <div class="info-modal" id="infoModal" hidden>
+      <div class="info-modal-backdrop" data-info-modal-close></div>
+      <div
+        class="info-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="infoModalTitle"
+      >
+        <button
+          type="button"
+          id="infoModalClose"
+          class="info-modal-close"
+          aria-label="關閉說明視窗"
+        >
+          ×
+        </button>
+        <h2 id="infoModalTitle">有關台語寫字練習簿編輯器</h2>
+        <div class="info-modal-section">
+          <p>
+            這个網頁是
+            <a href="https://kiantiong.com/t">陳建中 Tân Kiàn-tiong</a>
+            提供，無廣告、免錢、無任何的追蹤器，歡迎各位朋友加利用。
+          </p>
+          <p>
+            若有任何建議抑是問題欲回報，歡迎寫批去
+            <a href="mailto:kiantiong7235@gmail.com">kiantiong7235@gmail.com</a>
+            佮建中聯絡。
+          </p>
+          <p>
+            建中的其他家私會當參考
+            <a
+              href="https://kiantiong.com/series/%E5%BB%BA%E4%B8%AD%E5%AF%A6%E7%94%A8%E5%B7%A5%E5%85%B7/"
+              >建中實用工具</a
+            >
+            ，你若願意支持建中用愛發電的事工，歡迎
+            <a href="">寄付</a>，請建中啉涼的：）
+          </p>
+          <h3>功能介紹</h3>
+          <ul>
+            <li>佇倒手爿設定練習簿的內容，正手爿隨看著排版的結果。</li>
+            <li>字的寸尺、底線樣式、逝距隨在你撨。</li>
+            <li>揤「輸出 PDF」通輸出會當印出來練習的檔案。</li>
+            <li>
+              通匯入／匯出設定檔，共家己的學習單設定記起來，嘛通互相分享。
+            </li>
+            <li>「段落文字」適合寫較長篇的文字，嘛有支援 Markdown 語法。</li>
+            <li>「分頁標記」通指定系統佇佗位</li>
+            <li>
+              「建中的教材」有
+              <a href="https://kiantiong.com/blog/taigibun101_2026/"
+                >建中的台語文入門課</a
+              >
+              的紙本教材，歡迎直接提去用抑是修改。
+            </li>
+          </ul>
+        </div>
+        <div class="info-modal-section">
+          <h3>2026.3.16 初版本</h3>
+          <ul>
+            <li>網頁上架</li>
+          </ul>
+        </div>
+      </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>

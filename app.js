@@ -93,6 +93,9 @@
   const $settingsToggle = document.getElementById("settingsToggle");
   const $settingsPanel = document.getElementById("settingsPanel");
   const $pageHeader = document.getElementById("pageHeader");
+  const $infoButton = document.getElementById("infoButton");
+  const $infoModal = document.getElementById("infoModal");
+  const $infoModalClose = document.getElementById("infoModalClose");
 
   /** 將練習項目展開為一維「顯示條目」陣列：一般行、分頁標記、圖片。供分頁與預覽使用 */
   function getFlatEntries() {
@@ -297,6 +300,61 @@
     $pageHeader.addEventListener("change", updatePageHeader);
     if (state.pageHeader) $pageHeader.value = state.pageHeader;
   }
+
+  // 關於／更新資訊視窗
+  (function setupInfoModal() {
+    if (!$infoButton || !$infoModal) return;
+    var lastFocused = null;
+    var backdrop = $infoModal.querySelector(".info-modal-backdrop");
+
+    function openInfoModal() {
+      if (!$infoModal) return;
+      lastFocused = document.activeElement;
+      $infoModal.hidden = false;
+      document.body.classList.add("is-modal-open");
+      var heading = $infoModal.querySelector("#infoModalTitle");
+      if (heading && typeof heading.focus === "function") {
+        heading.setAttribute("tabindex", "-1");
+        heading.focus();
+      }
+    }
+
+    function closeInfoModal() {
+      if (!$infoModal) return;
+      $infoModal.hidden = true;
+      document.body.classList.remove("is-modal-open");
+      if (lastFocused && typeof lastFocused.focus === "function") {
+        lastFocused.focus();
+      }
+    }
+
+    $infoButton.addEventListener("click", function () {
+      if ($infoModal.hidden) {
+        openInfoModal();
+      } else {
+        closeInfoModal();
+      }
+    });
+
+    if ($infoModalClose) {
+      $infoModalClose.addEventListener("click", function () {
+        closeInfoModal();
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener("click", function () {
+        closeInfoModal();
+      });
+    }
+
+    document.addEventListener("keydown", function (evt) {
+      if (evt.key === "Escape" && !$infoModal.hidden) {
+        evt.preventDefault();
+        closeInfoModal();
+      }
+    });
+  })();
 
   // 底線樣式
   document

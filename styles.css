@@ -37,6 +37,10 @@ body {
   overflow: hidden;
 }
 
+a {
+  color: var(--accent);
+}
+
 .app {
   display: grid;
   grid-template-columns: var(--sidebar-width) 1fr;
@@ -70,6 +74,12 @@ body {
   min-width: 0;
 }
 
+.header-title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
 .header h1 {
   margin: 0;
   font-size: 1.5rem;
@@ -81,6 +91,30 @@ body {
   margin: 0.25rem 0 0;
   font-size: 0.9rem;
   color: #666;
+}
+
+.btn-info-icon {
+  flex-shrink: 0;
+  width: 1.75rem;
+  height: 1.75rem;
+  padding: 0;
+  border-radius: 999px;
+  /* border: 1px solid var(--accent); */
+  border: none;
+  background: var(--paper);
+  color: var(--accent);
+  font-size: 1.3rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transform: translateY(8%);
+}
+
+.btn-info-icon:hover {
+  background: var(--bg);
+  border-color: var(--accent-hover);
 }
 
 .header-actions {
@@ -645,9 +679,15 @@ body {
   line-height: 1.3;
 }
 
-.preview-content-block h1 { font-size: 1.25em; }
-.preview-content-block h2 { font-size: 1.15em; }
-.preview-content-block h3 { font-size: 1.05em; }
+.preview-content-block h1 {
+  font-size: 1.25em;
+}
+.preview-content-block h2 {
+  font-size: 1.15em;
+}
+.preview-content-block h3 {
+  font-size: 1.05em;
+}
 
 .preview-content-block ul,
 .preview-content-block ol {
@@ -691,6 +731,102 @@ body {
 
 .btn-export:hover {
   background: var(--accent-hover);
+}
+
+/* 說明視窗（關於／更新資訊） */
+.info-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.info-modal[hidden] {
+  display: none;
+}
+
+.info-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35);
+  pointer-events: auto;
+}
+
+.info-modal-dialog {
+  position: relative;
+  max-width: min(540px, 100vw - 2rem);
+  max-height: min(80vh, 640px);
+  width: 100%;
+  background: var(--paper);
+  border-radius: 12px;
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.25);
+  padding: 1.5rem 1.75rem 1.75rem;
+  overflow: hidden;
+  pointer-events: auto;
+  box-sizing: border-box;
+}
+
+.info-modal-dialog h2 {
+  margin: 0 0 0.75rem;
+  font-size: 1.25rem;
+  color: var(--accent);
+}
+
+.info-modal-dialog h3 {
+  margin: 1rem 0 0.5rem;
+  font-size: 0.95rem;
+  color: #444;
+}
+
+.info-modal-section {
+  font-size: 0.9rem;
+  line-height: 1.6;
+  color: #333;
+}
+
+.info-modal-section ul {
+  margin: 0.25rem 0 0.75rem;
+  padding-left: 1.25rem;
+}
+
+.info-modal-section li {
+  margin: 0.15rem 0;
+}
+
+.info-modal-note {
+  margin-top: 0.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.info-modal-close {
+  position: absolute;
+  top: 0.6rem;
+  right: 0.8rem;
+  width: 1.75rem;
+  height: 1.75rem;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 1.2rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.info-modal-close:hover {
+  background: rgba(0, 0, 0, 0.03);
+  color: #444;
+}
+
+.is-modal-open {
+  overflow: hidden;
 }
 
 /* Main - A4 預覽區：僅此區可捲動 */
