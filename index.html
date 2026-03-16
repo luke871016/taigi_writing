@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>台語寫字練習簿編輯器</title>
-    <link rel="stylesheet" href="styles.css?v=1.0.0" />
+    <link rel="stylesheet" href="styles.css?v=1.0.1" />
   </head>
   <body>
     <div class="app">
@@ -153,6 +153,11 @@
               </button>
               <ul id="insertMenu" class="insert-menu" role="menu" hidden>
                 <li role="none">
+                  <button type="button" role="menuitem" id="insertContent">
+                    ＋ 段落文字
+                  </button>
+                </li>
+                <li role="none">
                   <button type="button" role="menuitem" id="insertPageBreak">
                     ＋ 分頁標記
                   </button>
@@ -182,6 +187,7 @@
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="app.js?v=1.0.0"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script src="app.js?v=1.0.1"></script>
   </body>
 </html>

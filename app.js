@@ -77,6 +77,7 @@
   const $insertPageBreak = document.getElementById("insertPageBreak");
   const $insertToneChart = document.getElementById("insertToneChart");
   const $insertSandhiChart = document.getElementById("insertSandhiChart");
+  const $insertContent = document.getElementById("insertContent");
   const $exportPdf = document.getElementById("exportPdf");
   const $loadTextbookBtn = document.getElementById("loadTextbookBtn");
   const $loadTextbookMenu = document.getElementById("loadTextbookMenu");
@@ -103,6 +104,13 @@
       }
       if (item.type === "image" && item.imagePath) {
         flat.push({ image: item.imagePath, itemIndex: itemIndex });
+        return;
+      }
+      if (item.type === "content") {
+        flat.push({
+          content: typeof item.content === "string" ? item.content : "",
+          itemIndex: itemIndex,
+        });
         return;
       }
       var n = Math.max(1, parseInt(item.lineCount, 10) || 1);
@@ -134,6 +142,16 @@
   function getImageBlockHeightPx() {
     var contentH = getContentHeightPx();
     return Math.round((100 / 257) * contentH);
+  }
+
+  /** 內文區塊估計高度：依行數與行高估算，至少約 3 行高 */
+  function getContentBlockHeightPx(contentText) {
+    var text = typeof contentText === "string" ? contentText : "";
+    var lines = text ? (text.match(/\n/g) || []).length + 1 : 1;
+    var lh = getLineHeightPx();
+    var minH = lh * 3;
+    var estimated = Math.ceil(lines * lh * 1.25);
+    return Math.max(minH, Math.min(estimated, getContentHeightPx() * 0.6));
   }
 
   /** 1cm 的 px 值（用於需要時換算）；ruler 須設 10mm 才會量到正確高度，0mm 會得到 0 */
@@ -197,6 +215,17 @@
         }
         page.push(entry);
         used += imgH;
+        continue;
+      }
+      if (entry.content !== undefined) {
+        var blockH = getContentBlockHeightPx(entry.content);
+        if (used + blockH > contentH && page.length > 0) {
+          pages.push(page);
+          page = [];
+          used = 0;
+        }
+        page.push(entry);
+        used += blockH;
         continue;
       }
       var lineH = page.length === 0 ? lh : slotH;
@@ -635,6 +664,117 @@
         $itemList.appendChild(wrap);
         return;
       }
+      if (item.type === "content") {
+        wrap.classList.add("item-type-content");
+        var row = document.createElement("div");
+        row.className = "item-field item-field-last";
+        var label = document.createElement("span");
+        label.className = "item-special-label";
+        label.textContent = "內文";
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-remove";
+        btn.setAttribute("aria-label", "移除此內文區塊");
+        btn.textContent = "×";
+        btn.addEventListener("click", function () {
+          removeItem(getBlockIndex(wrap));
+        });
+        var dragHandle = document.createElement("span");
+        dragHandle.className = "item-drag-handle";
+        dragHandle.setAttribute("aria-label", "拖曳以調整順序");
+        dragHandle.draggable = true;
+        dragHandle.addEventListener("dragstart", function (e) {
+          draggedItemId = item.id;
+          e.dataTransfer.setData("text/plain", item.id);
+          e.dataTransfer.effectAllowed = "move";
+          wrap.classList.add("item-dragging");
+          lastDragOverId = null;
+        });
+        dragHandle.addEventListener("dragend", function () {
+          draggedItemId = null;
+          wrap.classList.remove("item-dragging");
+          lastDragOverId = null;
+          $itemList.querySelectorAll(".item-block").forEach(function (el) {
+            el.classList.remove("item-drag-over");
+          });
+          updatePreviewEditingOutline();
+        });
+        wrap.addEventListener("focusin", function () {
+          state.focusedItemIndex = getBlockIndex(wrap);
+          updatePreviewEditingOutline();
+          scrollPreviewToItem(getBlockIndex(wrap));
+        });
+        wrap.addEventListener("focusout", function (e) {
+          var target = e.relatedTarget;
+          if (wrap.contains(target)) return;
+          if (
+            target === $addItem ||
+            (target && $addItem && $addItem.contains(target))
+          )
+            return;
+          state.focusedItemIndex = null;
+        });
+        wrap.addEventListener("dragover", function (e) {
+          if (e.dataTransfer.types.indexOf("text/plain") === -1) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          var blockId = wrap.getAttribute("data-item-id");
+          if (!blockId) return;
+          wrap.classList.add("item-drag-over");
+          if (blockId === lastDragOverId) return;
+          if (!draggedItemId || blockId === draggedItemId) return;
+          lastDragOverId = blockId;
+          var fromIndex = state.items.findIndex(function (it) {
+            return it.id === draggedItemId;
+          });
+          var toIndex = getBlockIndex(wrap);
+          if (fromIndex === -1 || fromIndex === toIndex) return;
+          var moved = state.items[fromIndex];
+          state.items.splice(fromIndex, 1);
+          state.items.splice(toIndex, 0, moved);
+          reorderItemListUpdateFocus(fromIndex, toIndex);
+          reorderItemListWithFLIP();
+        });
+        wrap.addEventListener("dragleave", function () {
+          wrap.classList.remove("item-drag-over");
+        });
+        wrap.addEventListener("drop", function (e) {
+          e.preventDefault();
+          wrap.classList.remove("item-drag-over");
+          lastDragOverId = null;
+          var draggedId = e.dataTransfer.getData("text/plain");
+          var fromIndex = state.items.findIndex(function (it) {
+            return it.id === draggedId;
+          });
+          var toIndex = getBlockIndex(wrap);
+          if (fromIndex === -1) return;
+          if (fromIndex !== toIndex) {
+            var moved = state.items[fromIndex];
+            state.items.splice(fromIndex, 1);
+            state.items.splice(toIndex, 0, moved);
+            reorderItemListUpdateFocus(fromIndex, toIndex);
+            reorderItemListDOM();
+          }
+          renderPreview();
+        });
+        var textareaRow = document.createElement("div");
+        textareaRow.className = "item-field item-field-content";
+        var textarea = document.createElement("textarea");
+        textarea.rows = 5;
+        textarea.placeholder = "輸入內文，支援 **粗體**、*斜體*、標題、列表等 Markdown 語法";
+        textarea.value = typeof item.content === "string" ? item.content : "";
+        textarea.addEventListener("input", function () {
+          setItemField(getBlockIndex(wrap), "content", textarea.value);
+        });
+        textareaRow.appendChild(textarea);
+        row.appendChild(label);
+        row.appendChild(btn);
+        row.appendChild(dragHandle);
+        wrap.appendChild(row);
+        wrap.appendChild(textareaRow);
+        $itemList.appendChild(wrap);
+        return;
+      }
       function setFocusedItemIndex(value) {
         state.focusedItemIndex = value;
         updatePreviewEditingOutline();
@@ -917,6 +1057,25 @@
           currentItemIndex = -1;
           continue;
         }
+        if (entry.content !== undefined) {
+          if (currentGroup) linesEl.appendChild(currentGroup);
+          currentGroup = document.createElement("div");
+          currentGroup.className = "preview-item-group";
+          currentGroup.setAttribute("data-item-index", String(entry.itemIndex));
+          var contentWrap = document.createElement("div");
+          contentWrap.className = "preview-content-block";
+          var raw = entry.content || "";
+          if (typeof marked !== "undefined" && raw.trim()) {
+            contentWrap.innerHTML = marked.parse(raw);
+          } else {
+            contentWrap.textContent = raw || "\u00A0";
+          }
+          currentGroup.appendChild(contentWrap);
+          linesEl.appendChild(currentGroup);
+          currentGroup = null;
+          currentItemIndex = -1;
+          continue;
+        }
         if (entry.itemIndex !== currentItemIndex) {
           if (currentGroup) linesEl.appendChild(currentGroup);
           currentGroup = document.createElement("div");
@@ -1025,6 +1184,11 @@
   if ($insertSandhiChart) {
     $insertSandhiChart.addEventListener("click", function () {
       insertBelowCurrent({ type: "image", imagePath: "images/變調圖.png" });
+    });
+  }
+  if ($insertContent) {
+    $insertContent.addEventListener("click", function () {
+      insertBelowCurrent({ type: "content", content: "" });
     });
   }
 
@@ -1138,6 +1302,13 @@
         if (item.type === "image" && item.imagePath) {
           return { type: "image", imagePath: item.imagePath, id: item.id };
         }
+        if (item.type === "content") {
+          return {
+            type: "content",
+            content: typeof item.content === "string" ? item.content : "",
+            id: item.id,
+          };
+        }
         return {
           description: item.description || "",
           exampleText: item.exampleText || "",
@@ -1172,6 +1343,13 @@
           return ensureItemId({
             type: "image",
             imagePath: String(item.imagePath),
+            id: item.id,
+          });
+        }
+        if (item.type === "content") {
+          return ensureItemId({
+            type: "content",
+            content: typeof item.content === "string" ? item.content : "",
             id: item.id,
           });
         }
