@@ -1322,7 +1322,7 @@
     $loadTextbookBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       if ($loadTextbookMenu.hidden) {
-        fetch("textbooks/index.json")
+        fetch("textbooks/index.json?v=1.0.1")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得教材清單");
             return r.json();

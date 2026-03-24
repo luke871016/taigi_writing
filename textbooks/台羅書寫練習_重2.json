@@ -66,7 +66,7 @@
     },
     {
       "description": "鼻音韻母 ①",
-      "exampleText": "am im on iam an in un ian uan",
+      "exampleText": "am im om iam an in un ian uan",
       "lineCount": 3,
       "id": "item-11"
     },
@@ -111,7 +111,7 @@
       "id": "item-6"
     },
     {
-      "description": "鼻化聲母",
+      "description": "聲化韻母",
       "exampleText": "m ng",
       "lineCount": 3,
       "id": "item-17"
