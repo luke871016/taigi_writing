@@ -29,6 +29,31 @@
     focusedItemIndex: null,
   };
   ensureAllItemIds();
+  var undoStack = [];
+  var redoStack = [];
+  var isApplyingHistory = false;
+
+  function cloneItems(items) {
+    return items.map(function (item) {
+      return Object.assign({}, item);
+    });
+  }
+
+  function getSnapshot() {
+    return {
+      items: cloneItems(state.items),
+      lineStyle: state.lineStyle,
+      lineSpacingDelta: state.lineSpacingDelta,
+      fontSize: state.fontSize,
+      pageHeader: state.pageHeader,
+      focusedItemIndex: state.focusedItemIndex,
+    };
+  }
+
+  function snapshotsEqual(a, b) {
+    if (!a || !b) return false;
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
 
   /** 依目前字級計算單行行高（與字級成比例，比例同預設 24px -> 40px） */
   function getLineHeightPx() {
@@ -96,6 +121,90 @@
   const $infoButton = document.getElementById("infoButton");
   const $infoModal = document.getElementById("infoModal");
   const $infoModalClose = document.getElementById("infoModalClose");
+  const $undoButton = document.getElementById("undoButton");
+  const $redoButton = document.getElementById("redoButton");
+
+  function updateHistoryButtonState() {
+    if ($undoButton) {
+      $undoButton.disabled = undoStack.length === 0;
+      $undoButton.title =
+        undoStack.length === 0 ? "目前無可撤銷的動作" : "撤銷上一個編輯動作";
+    }
+    if ($redoButton) {
+      $redoButton.disabled = redoStack.length === 0;
+      $redoButton.title =
+        redoStack.length === 0 ? "目前無可重做的動作" : "重做上一個撤銷動作";
+    }
+  }
+
+  function pushUndoSnapshot() {
+    if (isApplyingHistory) return;
+    var snapshot = getSnapshot();
+    if (
+      undoStack.length > 0 &&
+      snapshotsEqual(undoStack[undoStack.length - 1], snapshot)
+    ) {
+      return;
+    }
+    undoStack.push(snapshot);
+    if (undoStack.length > 300) undoStack.shift();
+    redoStack = [];
+    updateHistoryButtonState();
+  }
+
+  function applySnapshot(snapshot) {
+    if (!snapshot) return;
+    state.items = cloneItems(snapshot.items || []);
+    ensureAllItemIds();
+    state.lineStyle = snapshot.lineStyle === "triple" ? "triple" : "single";
+    state.lineSpacingDelta = Number(snapshot.lineSpacingDelta) || 0;
+    state.fontSize = Math.max(16, Math.min(40, Number(snapshot.fontSize) || 24));
+    state.pageHeader = String(snapshot.pageHeader || "");
+    state.focusedItemIndex =
+      typeof snapshot.focusedItemIndex === "number"
+        ? snapshot.focusedItemIndex
+        : null;
+
+    if ($fontSize) $fontSize.value = state.fontSize;
+    if ($fontSizeValue) $fontSizeValue.textContent = state.fontSize + "px";
+    if ($lineSpacing)
+      $lineSpacing.value = Math.round(state.lineSpacingDelta * 100);
+    if ($lineSpacingValue) {
+      var spacingText = state.lineSpacingDelta.toFixed(2);
+      $lineSpacingValue.textContent =
+        (state.lineSpacingDelta > 0 ? "+" : "") + spacingText;
+    }
+    if ($pageHeader) $pageHeader.value = state.pageHeader;
+    document.querySelectorAll('input[name="lineStyle"]').forEach(function (radio) {
+      radio.checked = radio.value === state.lineStyle;
+    });
+
+    applyPreviewVars();
+    renderItemList();
+    renderPreview();
+  }
+
+  function undoLastEdit() {
+    if (undoStack.length === 0) return;
+    var snapshot = undoStack.pop();
+    redoStack.push(getSnapshot());
+    if (redoStack.length > 300) redoStack.shift();
+    isApplyingHistory = true;
+    applySnapshot(snapshot);
+    isApplyingHistory = false;
+    updateHistoryButtonState();
+  }
+
+  function redoLastEdit() {
+    if (redoStack.length === 0) return;
+    var snapshot = redoStack.pop();
+    undoStack.push(getSnapshot());
+    if (undoStack.length > 300) undoStack.shift();
+    isApplyingHistory = true;
+    applySnapshot(snapshot);
+    isApplyingHistory = false;
+    updateHistoryButtonState();
+  }
 
   /** 將練習項目展開為一維「顯示條目」陣列：一般行、分頁標記、圖片。供分頁與預覽使用 */
   function getFlatEntries() {
@@ -266,6 +375,7 @@
   // 文字大小拉桿
   if ($fontSize && $fontSizeValue) {
     function updateFontSize() {
+      pushUndoSnapshot();
       state.fontSize = Number($fontSize.value);
       $fontSizeValue.textContent = state.fontSize + "px";
       applyPreviewVars();
@@ -278,6 +388,7 @@
   // 行距拉桿：範圍 -0.2～+0.2，step 0.01（內部 -20～20 再 ÷100）
   if ($lineSpacing && $lineSpacingValue) {
     function updateLineSpacing() {
+      pushUndoSnapshot();
       state.lineSpacingDelta = Number($lineSpacing.value) / 100;
       var v = state.lineSpacingDelta.toFixed(2);
       $lineSpacingValue.textContent =
@@ -293,6 +404,7 @@
   // 頁首
   if ($pageHeader) {
     function updatePageHeader() {
+      pushUndoSnapshot();
       state.pageHeader = $pageHeader.value.trim();
       renderPreview();
     }
@@ -361,12 +473,14 @@
     .querySelectorAll('input[name="lineStyle"]')
     .forEach(function (radio) {
       radio.addEventListener("change", function () {
+        pushUndoSnapshot();
         state.lineStyle = this.value;
         renderPreview();
       });
     });
 
   function addItem() {
+    pushUndoSnapshot();
     var newItem = ensureItemId({
       description: "",
       exampleText: "",
@@ -398,6 +512,7 @@
   }
 
   function removeItem(index) {
+    pushUndoSnapshot();
     state.items.splice(index, 1);
     renderItemList();
     renderPreview();
@@ -405,6 +520,7 @@
 
   function setItemField(index, field, value) {
     if (!state.items[index]) return;
+    pushUndoSnapshot();
     if (field === "lineCount") {
       state.items[index].lineCount = Math.max(1, parseInt(value, 10) || 1);
     } else {
@@ -540,6 +656,7 @@
         dragHandle.setAttribute("aria-label", "拖曳以調整順序");
         dragHandle.draggable = true;
         dragHandle.addEventListener("dragstart", function (e) {
+          pushUndoSnapshot();
           draggedItemId = item.id;
           e.dataTransfer.setData("text/plain", item.id);
           e.dataTransfer.effectAllowed = "move";
@@ -642,6 +759,7 @@
         dragHandle.setAttribute("aria-label", "拖曳以調整順序");
         dragHandle.draggable = true;
         dragHandle.addEventListener("dragstart", function (e) {
+          pushUndoSnapshot();
           draggedItemId = item.id;
           e.dataTransfer.setData("text/plain", item.id);
           e.dataTransfer.effectAllowed = "move";
@@ -742,6 +860,7 @@
         dragHandle.setAttribute("aria-label", "拖曳以調整順序");
         dragHandle.draggable = true;
         dragHandle.addEventListener("dragstart", function (e) {
+          pushUndoSnapshot();
           draggedItemId = item.id;
           e.dataTransfer.setData("text/plain", item.id);
           e.dataTransfer.effectAllowed = "move";
@@ -909,6 +1028,7 @@
       dragHandle.setAttribute("aria-label", "拖曳以調整順序");
       dragHandle.draggable = true;
       dragHandle.addEventListener("dragstart", function (e) {
+        pushUndoSnapshot();
         draggedItemId = item.id;
         e.dataTransfer.setData("text/plain", item.id);
         e.dataTransfer.effectAllowed = "move";
@@ -1153,6 +1273,26 @@
   }
 
   $addItem.addEventListener("click", addItem);
+  if ($undoButton) {
+    $undoButton.addEventListener("click", undoLastEdit);
+  }
+  if ($redoButton) {
+    $redoButton.addEventListener("click", redoLastEdit);
+  }
+
+  document.addEventListener("keydown", function (evt) {
+    var key = String(evt.key).toLowerCase();
+    if (!(evt.ctrlKey || evt.metaKey) || key !== "z") return;
+    var isRedoHotkey = evt.shiftKey;
+    var isUndoHotkey =
+      (evt.ctrlKey || evt.metaKey) && !evt.shiftKey && key === "z";
+    evt.preventDefault();
+    if (isRedoHotkey) {
+      redoLastEdit();
+    } else if (isUndoHotkey) {
+      undoLastEdit();
+    }
+  });
 
   if ($settingsToggle && $settingsPanel) {
     $settingsToggle.addEventListener("click", function () {
@@ -1166,6 +1306,7 @@
 
   /** 在目前項目下方插入一筆項目（分頁標記或圖片） */
   function insertBelowCurrent(item) {
+    pushUndoSnapshot();
     var insertIndex;
     if (
       state.focusedItemIndex != null &&
@@ -1392,6 +1533,7 @@
   /** 從 JSON 套用設定並更新介面 */
   function applyImportedSettings(data) {
     if (!data || typeof data !== "object") return;
+    pushUndoSnapshot();
     if (Array.isArray(data.items) && data.items.length > 0) {
       state.items = data.items.map(function (item) {
         if (item.type === "pageBreak") {
@@ -1650,4 +1792,7 @@
   // 初始渲染
   renderItemList();
   renderPreview();
+  undoStack = [];
+  redoStack = [];
+  updateHistoryButtonState();
 })();

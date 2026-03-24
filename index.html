@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>台語寫字練習簿編輯器</title>
+    <title>台語寫字學習單編輯器</title>
     <link rel="stylesheet" href="styles.css?v=1.0.3" />
   </head>
   <body>
@@ -11,7 +11,7 @@
       <header class="header">
         <div class="header-left">
           <div class="header-title-row">
-            <h1>台語寫字練習簿編輯器</h1>
+            <h1>台語寫字學習單編輯器</h1>
             <button
               type="button"
               id="infoButton"
@@ -63,6 +63,25 @@
       </header>
 
       <aside class="sidebar">
+        <div class="sidebar-action-row">
+          <button
+            type="button"
+            id="undoButton"
+            class="btn btn-settings sidebar-undo-btn"
+            disabled
+          >
+            上一步
+          </button>
+          <button
+            type="button"
+            id="redoButton"
+            class="btn btn-settings sidebar-redo-btn"
+            disabled
+          >
+            下一步
+          </button>
+        </div>
+
         <section class="panel settings-panel is-collapsed" id="settingsPanel">
           <button
             type="button"
@@ -212,7 +231,7 @@
         >
           ×
         </button>
-        <h2 id="infoModalTitle">有關台語寫字練習簿編輯器</h2>
+        <h2 id="infoModalTitle">有關台語寫字學習單編輯器</h2>
         <div class="info-modal-section">
           <p>
             這个網頁是
@@ -235,7 +254,7 @@
           </p>
           <h3>功能介紹</h3>
           <ul>
-            <li>佇倒手爿設定練習簿的內容，正手爿隨看著排版的結果。</li>
+            <li>佇倒手爿設定學習單的內容，正手爿隨看著排版的結果。</li>
             <li>字的寸尺、底線樣式、逝距隨在你撨。</li>
             <li>揤「輸出 PDF」通輸出會當印出來練習的檔案。</li>
             <li>
