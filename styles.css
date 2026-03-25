@@ -12,6 +12,8 @@
   --ink: #1a1a1a;
   --line: #333;
   --line-light: #ccc;
+  /* 英文式三條線：頂線、中線（較淺）；底線仍用 --line-light */
+  --line-triple-upper: #e5e5e5;
   --bg: #f5f2eb;
   --paper: #fff;
   --accent: #5c8273;
@@ -1047,27 +1049,27 @@ a {
 }
 
 /* 三條線：頂線與中間線的定位（底線沿用共用 .baseline-bottom） */
-/* 最上面實線：2 倍 x-height（與中間虛線同灰色） */
+/* 最上面實線：2 倍 x-height（較淺，與底線區隔） */
 .preview-line.triple .baseline-guides .baseline-top {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 2ex;
   height: 0;
-  border-bottom: 1px solid var(--line-light);
+  border-bottom: 1px solid var(--line-triple-upper);
 }
 
-/* 中間虛線：x-height */
+/* 中間虛線：x-height（較淺） */
 .preview-line.triple .baseline-guides .baseline-line {
   position: absolute;
   left: 0;
   right: 0;
   bottom: 1ex;
   height: 0;
-  border-bottom: 1px dashed var(--line-light);
+  border-bottom: 1px dashed var(--line-triple-upper);
 }
 
-/* 最底下實線：基線上（與中間虛線同灰色） */
+/* 最底下實線：基線（主書寫線，較深） */
 .preview-line.triple .baseline-guides .baseline-bottom {
   position: absolute;
   left: 0;
