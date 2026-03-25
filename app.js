@@ -337,12 +337,7 @@
       }
       var slice = remaining.slice(0, i + 1);
       if (measureExampleStringWidthPx(slice) > maxWidthPx) {
-        var br =
-          lastSpace > 0
-            ? lastSpace
-            : i > 0
-              ? i
-              : 1;
+        var br = lastSpace > 0 ? lastSpace : i > 0 ? i : 1;
         var txt = remaining.slice(0, br);
         var rst = remaining.slice(br).replace(/^[ \t\u3000]+/, "");
         return { text: txt, rest: rst };
@@ -858,10 +853,7 @@
           if (!blockId) return;
           wrap.classList.add("item-drag-over");
           if (blockId === lastDragOverId) return;
-          if (
-            !draggedItemId ||
-            String(blockId) === String(draggedItemId)
-          )
+          if (!draggedItemId || String(blockId) === String(draggedItemId))
             return;
           lastDragOverId = blockId;
           var fromIndex = state.items.findIndex(function (it) {
@@ -948,10 +940,7 @@
           if (!blockId) return;
           wrap.classList.add("item-drag-over");
           if (blockId === lastDragOverId) return;
-          if (
-            !draggedItemId ||
-            String(blockId) === String(draggedItemId)
-          )
+          if (!draggedItemId || String(blockId) === String(draggedItemId))
             return;
           lastDragOverId = blockId;
           var fromIndex = state.items.findIndex(function (it) {
@@ -1035,10 +1024,7 @@
           if (!blockId) return;
           wrap.classList.add("item-drag-over");
           if (blockId === lastDragOverId) return;
-          if (
-            !draggedItemId ||
-            String(blockId) === String(draggedItemId)
-          )
+          if (!draggedItemId || String(blockId) === String(draggedItemId))
             return;
           lastDragOverId = blockId;
           var fromIndex = state.items.findIndex(function (it) {
@@ -1179,11 +1165,7 @@
         if (!blockId) return;
         wrap.classList.add("item-drag-over");
         if (blockId === lastDragOverId) return;
-        if (
-          !draggedItemId ||
-          String(blockId) === String(draggedItemId)
-        )
-          return;
+        if (!draggedItemId || String(blockId) === String(draggedItemId)) return;
         lastDragOverId = blockId;
         var fromIndex = state.items.findIndex(function (it) {
           return String(it.id) === String(draggedItemId);
@@ -1619,7 +1601,7 @@
       e.stopPropagation();
       closeLoadTextbookMenu();
       if ($loadTemplateMenu.hidden) {
-        fetch("templates/index.json?v=1.0.1")
+        fetch("templates/index.json?v=1.0.2")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得模板清單");
             return r.json();
@@ -1648,7 +1630,7 @@
       e.stopPropagation();
       closeLoadTemplateMenu();
       if ($loadTextbookMenu.hidden) {
-        fetch("textbooks/index.json?v=1.0.1")
+        fetch("textbooks/index.json?v=1.0.2")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得教材清單");
             return r.json();
