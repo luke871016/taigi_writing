@@ -26,6 +26,24 @@
           </p>
         </div>
         <div class="header-actions">
+          <div class="dropdown-wrap header-template-dropdown">
+            <button
+              type="button"
+              id="loadTemplateBtn"
+              class="btn btn-settings"
+              aria-label="載入模板"
+              aria-expanded="false"
+              aria-haspopup="true"
+            >
+              模板
+            </button>
+            <ul
+              id="loadTemplateMenu"
+              class="insert-menu textbook-menu"
+              role="menu"
+              hidden
+            ></ul>
+          </div>
           <div class="dropdown-wrap header-textbook-dropdown">
             <button
               type="button"
@@ -63,36 +81,79 @@
       </header>
 
       <aside class="sidebar">
-        <div class="sidebar-action-row">
+        <div class="sidebar-toolbar" role="toolbar" aria-label="側欄工具">
+          <button
+            type="button"
+            id="settingsToggle"
+            class="sidebar-icon-btn"
+            aria-label="設定"
+            aria-expanded="false"
+            aria-controls="settingsContent"
+            title="設定"
+          >
+            <svg
+              class="sidebar-icon-btn-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+              />
+            </svg>
+          </button>
           <button
             type="button"
             id="undoButton"
-            class="btn btn-settings sidebar-undo-btn"
+            class="sidebar-icon-btn"
+            aria-label="上一步"
             disabled
+            title="上一步"
           >
-            上一步
+            <svg
+              class="sidebar-icon-btn-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 7v6h6" />
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+            </svg>
           </button>
           <button
             type="button"
             id="redoButton"
-            class="btn btn-settings sidebar-redo-btn"
+            class="sidebar-icon-btn"
+            aria-label="下一步"
             disabled
+            title="下一步"
           >
-            下一步
+            <svg
+              class="sidebar-icon-btn-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 7v6h-6" />
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+            </svg>
           </button>
         </div>
 
         <section class="panel settings-panel is-collapsed" id="settingsPanel">
-          <button
-            type="button"
-            class="settings-toggle"
-            id="settingsToggle"
-            aria-expanded="false"
-            aria-controls="settingsContent"
-          >
-            <span class="settings-toggle-label">設定</span>
-            <span class="settings-toggle-icon" aria-hidden="true"></span>
-          </button>
           <div id="settingsContent" class="settings-content">
             <div class="settings-inner">
               <div class="panel">
@@ -102,7 +163,7 @@
                     type="text"
                     id="pageHeader"
                     class="page-header-input"
-                    placeholder="輸入頁首文字"
+                    placeholder="顯示佇每一頁正手爿頂面的文字"
                     maxlength="80"
                   />
                 </div>
@@ -235,22 +296,28 @@
         <div class="info-modal-section">
           <p>
             這个網頁是
-            <a href="https://kiantiong.com/ target="_blank">陳建中 Tân Kiàn-tiong</a>
+            <a href="https://kiantiong.com/" target="_blank"
+              >陳建中 Tân Kiàn-tiong</a
+            >
             提供，無廣告、免錢、無任何的追蹤器，歡迎各位朋友加利用。
           </p>
           <p>
             若有任何建議抑是問題欲回報，歡迎寫批去
-            <a href="mailto:kiantiong7235@gmail.com" target="_blank">kiantiong7235@gmail.com</a>
+            <a href="mailto:kiantiong7235@gmail.com" target="_blank"
+              >kiantiong7235@gmail.com</a
+            >
             佮建中聯絡。
           </p>
           <p>
             建中的其他家私會當參考
             <a
-              href="https://kiantiong.com/series/%E5%BB%BA%E4%B8%AD%E5%AF%A6%E7%94%A8%E5%B7%A5%E5%85%B7/" target="_blank"
+              href="https://kiantiong.com/series/%E5%BB%BA%E4%B8%AD%E5%AF%A6%E7%94%A8%E5%B7%A5%E5%85%B7/"
+              target="_blank"
               >建中實用工具</a
             >
             ，你若願意支持建中用愛發電的事工，歡迎
-            <a href="https://kiantiong.bobaboba.me/" target="_blank">寄付</a>，請建中啉涼的：）
+            <a href="https://kiantiong.bobaboba.me/" target="_blank">寄付</a
+            >，請建中啉涼的：）
           </p>
           <h3>功能介紹</h3>
           <ul>
@@ -262,6 +329,7 @@
             </li>
             <li>「段落文字」適合寫較長篇的文字，嘛有支援 Markdown 語法。</li>
             <li>「分頁標記」通指定系統佇佗位換後一頁。</li>
+            <li>「模板」有預設的學習單版型，通直接載入使用抑是改內容。</li>
             <li>
               「建中的教材」有
               <a href="https://kiantiong.com/blog/taigibun101_2026/"

@@ -172,16 +172,54 @@ a {
   margin-bottom: 0;
 }
 
-.sidebar-action-row {
+.sidebar-toolbar {
   display: flex;
   gap: 0.5rem;
   margin-bottom: 0.75rem;
 }
 
-.sidebar-undo-btn,
-.sidebar-redo-btn {
+.sidebar-icon-btn {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.5rem;
+  padding: 0.45rem;
+  font-family: inherit;
+  color: var(--accent);
+  background: var(--paper);
+  border: 1px solid var(--line-light);
+  border-radius: 6px;
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    border-color 0.15s,
+    color 0.15s;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+.sidebar-icon-btn:hover:not(:disabled) {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
+.sidebar-icon-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.sidebar-icon-btn[aria-expanded="true"] {
+  background: var(--bg);
+  border-color: var(--accent);
+}
+
+.sidebar-icon-btn-svg {
+  width: 1.35rem;
+  height: 1.35rem;
+  display: block;
+  flex-shrink: 0;
 }
 
 .item-list-panel .item-list {
@@ -189,47 +227,9 @@ a {
   min-height: 0;
 }
 
-/* 設定區塊：可收合 */
+/* 設定區塊：可收合（由側欄齒輪按鈕切換） */
 .settings-panel {
   margin-bottom: 1.5rem;
-}
-
-.settings-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
-  padding: 0.5rem 0;
-  margin: 0 0 0.25rem;
-  font-family: inherit;
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: #555;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  background: none;
-  border: none;
-  cursor: pointer;
-  -webkit-appearance: none;
-  appearance: none;
-}
-
-.settings-toggle:hover {
-  color: var(--accent);
-}
-
-.settings-toggle-icon {
-  display: inline-block;
-  width: 0.5rem;
-  height: 0.5rem;
-  border-right: 2px solid currentColor;
-  border-bottom: 2px solid currentColor;
-  transform: rotate(-45deg);
-  transition: transform 0.2s ease;
-}
-
-.settings-panel.is-collapsed .settings-toggle-icon {
-  transform: rotate(45deg);
 }
 
 .settings-content {
@@ -415,6 +415,12 @@ a {
   min-width: 0;
 }
 
+/* 字詞見本 */
+.item-block textarea.item-example-textarea {
+  min-height: 4.25em;
+  resize: vertical;
+}
+
 .item-block .item-field-last .btn-remove {
   margin-left: auto;
 }
@@ -590,7 +596,8 @@ a {
   display: none;
 }
 
-/* 載入教材選單（header 內） */
+/* 載入模板／教材選單（header 內） */
+.header-template-dropdown,
 .header-textbook-dropdown {
   display: flex;
   align-items: center;
@@ -975,6 +982,10 @@ a {
   line-height: var(--line-height-px);
   color: #aaa;
   margin-right: 0.5em;
+  /* 每列僅一視覺行：換行由程式依行數分配，避免與量測不一致時再被瀏覽器折行 */
+  white-space: nowrap;
+  overflow: hidden;
+  max-width: calc(100% - 80px - 0.5em);
 }
 
 /* 無範例文字時仍保留同高佔位，讓行高與間距一致 */

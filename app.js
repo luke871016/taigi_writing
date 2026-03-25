@@ -15,6 +15,39 @@
     state.items.forEach(ensureItemId);
   }
 
+  /**
+   * 教材／匯入 JSON 可能重複使用相同 id，blocksById 會蓋掉前一格，拖曳後左欄無法重排。
+   * 強制每個項目 id 唯一，並拉高 nextItemId 避免新項目撞 id。
+   */
+  function ensureUniqueItemIds() {
+    var used = Object.create(null);
+    state.items.forEach(function (item) {
+      var id = item.id != null ? String(item.id).trim() : "";
+      if (id && !used[id]) {
+        used[id] = true;
+        item.id = id;
+      } else {
+        while (true) {
+          var nid = "item-" + String(nextItemId++);
+          if (!used[nid]) {
+            item.id = nid;
+            used[nid] = true;
+            break;
+          }
+        }
+      }
+    });
+    var max = 0;
+    state.items.forEach(function (item) {
+      var m = /^item-(\d+)$/.exec(String(item.id));
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (!isNaN(n) && n > max) max = n;
+      }
+    });
+    if (nextItemId <= max) nextItemId = max + 1;
+  }
+
   const state = {
     items: [
       { description: "台語", exampleText: "台語 Tâi-gí", lineCount: 1 },
@@ -29,6 +62,7 @@
     focusedItemIndex: null,
   };
   ensureAllItemIds();
+  ensureUniqueItemIds();
   var undoStack = [];
   var redoStack = [];
   var isApplyingHistory = false;
@@ -104,6 +138,8 @@
   const $insertSandhiChart = document.getElementById("insertSandhiChart");
   const $insertContent = document.getElementById("insertContent");
   const $exportPdf = document.getElementById("exportPdf");
+  const $loadTemplateBtn = document.getElementById("loadTemplateBtn");
+  const $loadTemplateMenu = document.getElementById("loadTemplateMenu");
   const $loadTextbookBtn = document.getElementById("loadTextbookBtn");
   const $loadTextbookMenu = document.getElementById("loadTextbookMenu");
   const $importSettings = document.getElementById("importSettings");
@@ -156,9 +192,13 @@
     if (!snapshot) return;
     state.items = cloneItems(snapshot.items || []);
     ensureAllItemIds();
+    ensureUniqueItemIds();
     state.lineStyle = snapshot.lineStyle === "triple" ? "triple" : "single";
     state.lineSpacingDelta = Number(snapshot.lineSpacingDelta) || 0;
-    state.fontSize = Math.max(16, Math.min(40, Number(snapshot.fontSize) || 24));
+    state.fontSize = Math.max(
+      16,
+      Math.min(40, Number(snapshot.fontSize) || 24),
+    );
     state.pageHeader = String(snapshot.pageHeader || "");
     state.focusedItemIndex =
       typeof snapshot.focusedItemIndex === "number"
@@ -175,13 +215,47 @@
         (state.lineSpacingDelta > 0 ? "+" : "") + spacingText;
     }
     if ($pageHeader) $pageHeader.value = state.pageHeader;
-    document.querySelectorAll('input[name="lineStyle"]').forEach(function (radio) {
-      radio.checked = radio.value === state.lineStyle;
-    });
+    document
+      .querySelectorAll('input[name="lineStyle"]')
+      .forEach(function (radio) {
+        radio.checked = radio.value === state.lineStyle;
+      });
 
     applyPreviewVars();
     renderItemList();
     renderPreview();
+  }
+
+  /** 瀏覽器 LocalStorage：自動儲存編輯進度 */
+  var LOCAL_STORAGE_KEY = "tai-gi-worksheet-editor-progress-v1";
+  var lastPersistedJson = "";
+
+  function persistProgressIfChanged() {
+    try {
+      var json = JSON.stringify(getSnapshot());
+      if (json === lastPersistedJson) return;
+      localStorage.setItem(LOCAL_STORAGE_KEY, json);
+      lastPersistedJson = json;
+    } catch (e) {
+      /* 配額、隱私模式等略過 */
+    }
+  }
+
+  function loadProgressFromLocalStorage() {
+    try {
+      var raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return false;
+      if (!Array.isArray(data.items)) return false;
+      isApplyingHistory = true;
+      applySnapshot(data);
+      isApplyingHistory = false;
+      return true;
+    } catch (e) {
+      isApplyingHistory = false;
+      return false;
+    }
   }
 
   function undoLastEdit() {
@@ -206,9 +280,113 @@
     updateHistoryButtonState();
   }
 
+  /** A4 工作區內文右左各 18mm，與 .worksheet-page padding 一致 */
+  var WORKSHEET_INNER_WIDTH_MM = 210 - 18 * 2;
+  /** 與 .preview-line .practice-zone min-width 一致 */
+  var PRACTICE_ZONE_MIN_WIDTH_PX = 80;
+  /** 與 .preview-line .example-text margin-right 0.5em 一致（以字級換算） */
+  var EXAMPLE_TEXT_MARGIN_RIGHT_EM = 0.5;
+
+  var exampleMeasureSpan = null;
+  function getExampleMeasureSpan() {
+    if (!exampleMeasureSpan) {
+      exampleMeasureSpan = document.createElement("span");
+      exampleMeasureSpan.setAttribute("aria-hidden", "true");
+      exampleMeasureSpan.style.cssText =
+        "position:absolute;left:-9999px;top:0;white-space:nowrap;visibility:hidden;pointer-events:none;font-family:Iansui,'Noto Sans TC',sans-serif;";
+      document.body.appendChild(exampleMeasureSpan);
+    }
+    return exampleMeasureSpan;
+  }
+
+  function getWorksheetTextAreaWidthPx() {
+    var ruler = document.createElement("div");
+    ruler.style.cssText =
+      "position:absolute;left:-9999px;width:" +
+      WORKSHEET_INNER_WIDTH_MM +
+      "mm;height:1px;visibility:hidden;box-sizing:border-box;";
+    document.body.appendChild(ruler);
+    var w = ruler.offsetWidth;
+    document.body.removeChild(ruler);
+    if (!w || w < 40) w = 400;
+    return w;
+  }
+
+  function measureExampleStringWidthPx(str) {
+    var span = getExampleMeasureSpan();
+    span.style.fontSize = state.fontSize + "px";
+    span.textContent = str;
+    return span.offsetWidth;
+  }
+
+  /**
+   * 從剩餘字串切出第一「視覺行」（寬度不超過 maxWidthPx），空格處盡量斷詞。
+   */
+  function takeExampleLineFrom(remaining, maxWidthPx) {
+    if (!remaining) {
+      return { text: "", rest: "" };
+    }
+    if (measureExampleStringWidthPx(remaining) <= maxWidthPx) {
+      return { text: remaining, rest: "" };
+    }
+    var lastSpace = -1;
+    for (var i = 0; i < remaining.length; i++) {
+      var ch = remaining.charAt(i);
+      if (ch === " " || ch === "\t" || ch === "\u3000") {
+        lastSpace = i;
+      }
+      var slice = remaining.slice(0, i + 1);
+      if (measureExampleStringWidthPx(slice) > maxWidthPx) {
+        var br =
+          lastSpace > 0
+            ? lastSpace
+            : i > 0
+              ? i
+              : 1;
+        var txt = remaining.slice(0, br);
+        var rst = remaining.slice(br).replace(/^[ \t\u3000]+/, "");
+        return { text: txt, rest: rst };
+      }
+    }
+    return { text: remaining, rest: "" };
+  }
+
+  /** 將範本字依寬度換行，最多 lineCount 行，超出部分丟棄（不顯示）。 */
+  function buildExampleLinesForItem(exampleText, lineCount, areaWidthPx) {
+    var n = Math.max(1, lineCount);
+    var marginRight = Math.round(EXAMPLE_TEXT_MARGIN_RIGHT_EM * state.fontSize);
+    var maxEx = Math.max(
+      16,
+      areaWidthPx - PRACTICE_ZONE_MIN_WIDTH_PX - marginRight,
+    );
+    var wrapped = [];
+    var paragraphs = String(exampleText != null ? exampleText : "").split(
+      /\r?\n/,
+    );
+    for (var p = 0; p < paragraphs.length; p++) {
+      var rem = paragraphs[p];
+      /* 使用者按 Enter 產生的空段落 = 佔一視覺列（不再被略過） */
+      if (rem === "") {
+        wrapped.push("");
+        continue;
+      }
+      while (rem) {
+        var take = takeExampleLineFrom(rem, maxEx);
+        wrapped.push(take.text);
+        rem = take.rest;
+      }
+    }
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      out.push(i < wrapped.length ? wrapped[i] : "");
+    }
+    return out;
+  }
+
   /** 將練習項目展開為一維「顯示條目」陣列：一般行、分頁標記、圖片。供分頁與預覽使用 */
   function getFlatEntries() {
     var flat = [];
+    var areaW = getWorksheetTextAreaWidthPx();
     state.items.forEach(function (item, itemIndex) {
       if (item.type === "pageBreak") {
         flat.push({ pageBreak: true });
@@ -226,9 +404,10 @@
         return;
       }
       var n = Math.max(1, parseInt(item.lineCount, 10) || 1);
+      var exampleLines = buildExampleLinesForItem(item.exampleText, n, areaW);
       for (var i = 0; i < n; i++) {
         flat.push({
-          exampleText: i === 0 ? item.exampleText || "" : "",
+          exampleText: exampleLines[i] || "",
           descriptionAbove: i === 0 ? item.description || null : null,
           itemIndex: itemIndex,
         });
@@ -531,7 +710,6 @@
 
   var lastDragOverId = null;
   var draggedItemId = null;
-  var flipCleanupTimeout = null;
 
   /** 依 state.items 順序重排左側列表 DOM，並更新 data-item-index */
   function reorderItemListDOM() {
@@ -541,10 +719,10 @@
     for (var k = 0; k < list.children.length; k++) {
       var block = list.children[k];
       var id = block.getAttribute("data-item-id");
-      if (id) blocksById[id] = block;
+      if (id) blocksById[String(id)] = block;
     }
     state.items.forEach(function (item, idx) {
-      var block = blocksById[item.id];
+      var block = blocksById[String(item.id)];
       if (block) {
         block.setAttribute("data-item-index", String(idx));
         list.appendChild(block);
@@ -552,61 +730,53 @@
     });
   }
 
-  /** 重排並播放 FLIP 動畫（用雙 rAF 記錄「前一格」確保方向反轉時也能正確觸發動畫） */
-  function reorderItemListWithFLIP() {
+  /**
+   * 拖曳經過時立刻重排（與 state 同步）。不用 FLIP：項目多時每次 dragover 若對全列表做
+   * 雙層 rAF + 每格動畫，動畫會重疊打斷，反而卡頓、順序錯亂。
+   */
+  function reorderItemListDuringDrag() {
     if (!$itemList || !state.items.length) return;
     var list = $itemList;
-    if (flipCleanupTimeout) {
-      clearTimeout(flipCleanupTimeout);
-      flipCleanupTimeout = null;
-    }
     for (var k = 0; k < list.children.length; k++) {
       var block = list.children[k];
       block.style.transition = "";
       block.style.transform = "";
     }
-    /* 第一個 rAF：僅讓瀏覽器有機會套用清除後的樣式與 layout */
-    requestAnimationFrame(function () {
-      requestAnimationFrame(function () {
-        var blockRects = {};
-        for (var k = 0; k < list.children.length; k++) {
-          var block = list.children[k];
-          var id = block.getAttribute("data-item-id");
-          if (id) blockRects[id] = block.getBoundingClientRect();
-        }
-        reorderItemListDOM();
-        list.offsetHeight; /* 強制 reflow，確保新順序的 layout 已套用 */
-        for (var k = 0; k < list.children.length; k++) {
-          var block = list.children[k];
-          var id = block.getAttribute("data-item-id");
-          var newRect = block.getBoundingClientRect();
-          var oldRect = id ? blockRects[id] : null;
-          if (oldRect) {
-            var deltaY = oldRect.top - newRect.top;
-            block.style.transform = "translateY(" + deltaY + "px)";
-          }
-        }
-        requestAnimationFrame(function () {
-          for (var k = 0; k < list.children.length; k++) {
-            var block = list.children[k];
-            block.style.transition = "transform 0.25s ease";
-            block.style.transform = "translateY(0)";
-          }
-          flipCleanupTimeout = setTimeout(function () {
-            flipCleanupTimeout = null;
-            for (var k = 0; k < list.children.length; k++) {
-              var block = list.children[k];
-              block.style.transition = "";
-              block.style.transform = "";
-            }
-          }, 260);
-        });
-      });
-    });
+    reorderItemListDOM();
   }
 
+  /** 拖曳結束：同步左欄 data-index 並重畫預覽（順序僅在 dragover 已寫入 state.items） */
+  function finishSidebarItemDrag(draggedWrap) {
+    draggedItemId = null;
+    lastDragOverId = null;
+    if (draggedWrap) {
+      draggedWrap.classList.remove("item-dragging");
+    }
+    if ($itemList) {
+      $itemList.querySelectorAll(".item-block").forEach(function (el) {
+        el.classList.remove("item-drag-over");
+      });
+    }
+    renderItemList();
+    renderPreview();
+    updatePreviewEditingOutline();
+  }
+
+  /**
+   * 以 data-item-id 對應 state.items 的即時順序；避免拖曳重排後 FLIP 尚未跑完時
+   * data-item-index 過舊，造成插錯位置。
+   */
   function getBlockIndex(wrap) {
-    return parseInt(wrap.getAttribute("data-item-index"), 10);
+    var id = wrap.getAttribute("data-item-id");
+    if (id) {
+      for (var i = 0; i < state.items.length; i++) {
+        if (String(state.items[i].id) === String(id)) {
+          return i;
+        }
+      }
+    }
+    var n = parseInt(wrap.getAttribute("data-item-index"), 10);
+    return isNaN(n) ? -1 : n;
   }
 
   /** 拖曳重排後更新 focusedItemIndex */
@@ -664,13 +834,7 @@
           lastDragOverId = null;
         });
         dragHandle.addEventListener("dragend", function () {
-          draggedItemId = null;
-          wrap.classList.remove("item-dragging");
-          lastDragOverId = null;
-          $itemList.querySelectorAll(".item-block").forEach(function (el) {
-            el.classList.remove("item-drag-over");
-          });
-          updatePreviewEditingOutline();
+          finishSidebarItemDrag(wrap);
         });
         wrap.addEventListener("focusin", function () {
           state.focusedItemIndex = getBlockIndex(wrap);
@@ -694,10 +858,14 @@
           if (!blockId) return;
           wrap.classList.add("item-drag-over");
           if (blockId === lastDragOverId) return;
-          if (!draggedItemId || blockId === draggedItemId) return;
+          if (
+            !draggedItemId ||
+            String(blockId) === String(draggedItemId)
+          )
+            return;
           lastDragOverId = blockId;
           var fromIndex = state.items.findIndex(function (it) {
-            return it.id === draggedItemId;
+            return String(it.id) === String(draggedItemId);
           });
           var toIndex = getBlockIndex(wrap);
           if (fromIndex === -1 || fromIndex === toIndex) return;
@@ -705,29 +873,17 @@
           state.items.splice(fromIndex, 1);
           state.items.splice(toIndex, 0, moved);
           reorderItemListUpdateFocus(fromIndex, toIndex);
-          reorderItemListWithFLIP();
+          reorderItemListDuringDrag();
         });
-        wrap.addEventListener("dragleave", function () {
+        wrap.addEventListener("dragleave", function (e) {
+          var rt = e.relatedTarget;
+          if (rt && wrap.contains(rt)) return;
           wrap.classList.remove("item-drag-over");
         });
         wrap.addEventListener("drop", function (e) {
           e.preventDefault();
           wrap.classList.remove("item-drag-over");
           lastDragOverId = null;
-          var draggedId = e.dataTransfer.getData("text/plain");
-          var fromIndex = state.items.findIndex(function (it) {
-            return it.id === draggedId;
-          });
-          var toIndex = getBlockIndex(wrap);
-          if (fromIndex === -1) return;
-          if (fromIndex !== toIndex) {
-            var moved = state.items[fromIndex];
-            state.items.splice(fromIndex, 1);
-            state.items.splice(toIndex, 0, moved);
-            reorderItemListUpdateFocus(fromIndex, toIndex);
-            reorderItemListDOM();
-          }
-          renderPreview();
         });
         row.appendChild(label);
         row.appendChild(btn);
@@ -767,13 +923,7 @@
           lastDragOverId = null;
         });
         dragHandle.addEventListener("dragend", function () {
-          draggedItemId = null;
-          wrap.classList.remove("item-dragging");
-          lastDragOverId = null;
-          $itemList.querySelectorAll(".item-block").forEach(function (el) {
-            el.classList.remove("item-drag-over");
-          });
-          updatePreviewEditingOutline();
+          finishSidebarItemDrag(wrap);
         });
         wrap.addEventListener("focusin", function () {
           state.focusedItemIndex = getBlockIndex(wrap);
@@ -798,10 +948,14 @@
           if (!blockId) return;
           wrap.classList.add("item-drag-over");
           if (blockId === lastDragOverId) return;
-          if (!draggedItemId || blockId === draggedItemId) return;
+          if (
+            !draggedItemId ||
+            String(blockId) === String(draggedItemId)
+          )
+            return;
           lastDragOverId = blockId;
           var fromIndex = state.items.findIndex(function (it) {
-            return it.id === draggedItemId;
+            return String(it.id) === String(draggedItemId);
           });
           var toIndex = getBlockIndex(wrap);
           if (fromIndex === -1 || fromIndex === toIndex) return;
@@ -809,29 +963,17 @@
           state.items.splice(fromIndex, 1);
           state.items.splice(toIndex, 0, moved);
           reorderItemListUpdateFocus(fromIndex, toIndex);
-          reorderItemListWithFLIP();
+          reorderItemListDuringDrag();
         });
-        wrap.addEventListener("dragleave", function () {
+        wrap.addEventListener("dragleave", function (e) {
+          var rt = e.relatedTarget;
+          if (rt && wrap.contains(rt)) return;
           wrap.classList.remove("item-drag-over");
         });
         wrap.addEventListener("drop", function (e) {
           e.preventDefault();
           wrap.classList.remove("item-drag-over");
           lastDragOverId = null;
-          var draggedId = e.dataTransfer.getData("text/plain");
-          var fromIndex = state.items.findIndex(function (it) {
-            return it.id === draggedId;
-          });
-          var toIndex = getBlockIndex(wrap);
-          if (fromIndex === -1) return;
-          if (fromIndex !== toIndex) {
-            var moved = state.items[fromIndex];
-            state.items.splice(fromIndex, 1);
-            state.items.splice(toIndex, 0, moved);
-            reorderItemListUpdateFocus(fromIndex, toIndex);
-            reorderItemListDOM();
-          }
-          renderPreview();
         });
         row.appendChild(label);
         row.appendChild(btn);
@@ -868,13 +1010,7 @@
           lastDragOverId = null;
         });
         dragHandle.addEventListener("dragend", function () {
-          draggedItemId = null;
-          wrap.classList.remove("item-dragging");
-          lastDragOverId = null;
-          $itemList.querySelectorAll(".item-block").forEach(function (el) {
-            el.classList.remove("item-drag-over");
-          });
-          updatePreviewEditingOutline();
+          finishSidebarItemDrag(wrap);
         });
         wrap.addEventListener("focusin", function () {
           state.focusedItemIndex = getBlockIndex(wrap);
@@ -899,10 +1035,14 @@
           if (!blockId) return;
           wrap.classList.add("item-drag-over");
           if (blockId === lastDragOverId) return;
-          if (!draggedItemId || blockId === draggedItemId) return;
+          if (
+            !draggedItemId ||
+            String(blockId) === String(draggedItemId)
+          )
+            return;
           lastDragOverId = blockId;
           var fromIndex = state.items.findIndex(function (it) {
-            return it.id === draggedItemId;
+            return String(it.id) === String(draggedItemId);
           });
           var toIndex = getBlockIndex(wrap);
           if (fromIndex === -1 || fromIndex === toIndex) return;
@@ -910,29 +1050,17 @@
           state.items.splice(fromIndex, 1);
           state.items.splice(toIndex, 0, moved);
           reorderItemListUpdateFocus(fromIndex, toIndex);
-          reorderItemListWithFLIP();
+          reorderItemListDuringDrag();
         });
-        wrap.addEventListener("dragleave", function () {
+        wrap.addEventListener("dragleave", function (e) {
+          var rt = e.relatedTarget;
+          if (rt && wrap.contains(rt)) return;
           wrap.classList.remove("item-drag-over");
         });
         wrap.addEventListener("drop", function (e) {
           e.preventDefault();
           wrap.classList.remove("item-drag-over");
           lastDragOverId = null;
-          var draggedId = e.dataTransfer.getData("text/plain");
-          var fromIndex = state.items.findIndex(function (it) {
-            return it.id === draggedId;
-          });
-          var toIndex = getBlockIndex(wrap);
-          if (fromIndex === -1) return;
-          if (fromIndex !== toIndex) {
-            var moved = state.items[fromIndex];
-            state.items.splice(fromIndex, 1);
-            state.items.splice(toIndex, 0, moved);
-            reorderItemListUpdateFocus(fromIndex, toIndex);
-            reorderItemListDOM();
-          }
-          renderPreview();
         });
         var textareaRow = document.createElement("div");
         textareaRow.className = "item-field item-field-content";
@@ -990,12 +1118,13 @@
       descRow.appendChild(descLabel);
       descRow.appendChild(descInput);
       var exRow = document.createElement("div");
-      exRow.className = "item-field";
+      exRow.className = "item-field item-field-content";
       var exLabel = document.createElement("label");
       exLabel.textContent = "字詞見本";
-      var exInput = document.createElement("input");
-      exInput.type = "text";
-      exInput.placeholder = "Kiàn-pún";
+      var exInput = document.createElement("textarea");
+      exInput.className = "item-example-textarea";
+      exInput.rows = 3;
+      exInput.placeholder = "參考的字詞（可換行，換行後範本會另起一列）";
       exInput.value = item.exampleText || "";
       exInput.addEventListener("input", function () {
         setItemField(getBlockIndex(wrap), "exampleText", exInput.value);
@@ -1036,13 +1165,7 @@
         lastDragOverId = null;
       });
       dragHandle.addEventListener("dragend", function () {
-        draggedItemId = null;
-        wrap.classList.remove("item-dragging");
-        lastDragOverId = null;
-        $itemList.querySelectorAll(".item-block").forEach(function (el) {
-          el.classList.remove("item-drag-over");
-        });
-        updatePreviewEditingOutline();
+        finishSidebarItemDrag(wrap);
       });
       lcRow.appendChild(lcLabel);
       lcRow.appendChild(lcInput);
@@ -1056,70 +1179,32 @@
         if (!blockId) return;
         wrap.classList.add("item-drag-over");
         if (blockId === lastDragOverId) return;
-        if (!draggedItemId || blockId === draggedItemId) return;
+        if (
+          !draggedItemId ||
+          String(blockId) === String(draggedItemId)
+        )
+          return;
         lastDragOverId = blockId;
         var fromIndex = state.items.findIndex(function (it) {
-          return it.id === draggedItemId;
+          return String(it.id) === String(draggedItemId);
         });
         var toIndex = getBlockIndex(wrap);
         if (fromIndex === -1 || fromIndex === toIndex) return;
         var moved = state.items[fromIndex];
         state.items.splice(fromIndex, 1);
         state.items.splice(toIndex, 0, moved);
-        var newIndex = toIndex;
-        if (state.focusedItemIndex === fromIndex) {
-          state.focusedItemIndex = newIndex;
-        } else if (
-          state.focusedItemIndex != null &&
-          fromIndex < state.focusedItemIndex &&
-          newIndex >= state.focusedItemIndex
-        ) {
-          state.focusedItemIndex = state.focusedItemIndex - 1;
-        } else if (
-          state.focusedItemIndex != null &&
-          fromIndex > state.focusedItemIndex &&
-          newIndex <= state.focusedItemIndex
-        ) {
-          state.focusedItemIndex = state.focusedItemIndex + 1;
-        }
-        reorderItemListWithFLIP();
+        reorderItemListUpdateFocus(fromIndex, toIndex);
+        reorderItemListDuringDrag();
       });
-      wrap.addEventListener("dragleave", function () {
+      wrap.addEventListener("dragleave", function (e) {
+        var rt = e.relatedTarget;
+        if (rt && wrap.contains(rt)) return;
         wrap.classList.remove("item-drag-over");
       });
       wrap.addEventListener("drop", function (e) {
         e.preventDefault();
         wrap.classList.remove("item-drag-over");
         lastDragOverId = null;
-        var draggedId = e.dataTransfer.getData("text/plain");
-        var fromIndex = state.items.findIndex(function (it) {
-          return it.id === draggedId;
-        });
-        var toIndex = getBlockIndex(wrap);
-        if (fromIndex === -1) return;
-        if (fromIndex !== toIndex) {
-          var moved = state.items[fromIndex];
-          state.items.splice(fromIndex, 1);
-          var newIndex = toIndex;
-          state.items.splice(toIndex, 0, moved);
-          if (state.focusedItemIndex === fromIndex) {
-            state.focusedItemIndex = newIndex;
-          } else if (
-            state.focusedItemIndex != null &&
-            fromIndex < state.focusedItemIndex &&
-            newIndex >= state.focusedItemIndex
-          ) {
-            state.focusedItemIndex = state.focusedItemIndex - 1;
-          } else if (
-            state.focusedItemIndex != null &&
-            fromIndex > state.focusedItemIndex &&
-            newIndex <= state.focusedItemIndex
-          ) {
-            state.focusedItemIndex = state.focusedItemIndex + 1;
-          }
-          reorderItemListDOM();
-        }
-        renderPreview();
       });
       wrap.appendChild(descRow);
       wrap.appendChild(exRow);
@@ -1391,10 +1476,80 @@
     });
   }
 
+  /** 載入模板：清單（templates/index.json 取得失敗時使用） */
+  var defaultTemplateList = [
+    { name: "空白練習單（三題）", file: "空白練習單.json" },
+    { name: "說明佮練習格", file: "說明佮練習格.json" },
+    { name: "三線格大筆記", file: "三線格大筆記.json" },
+  ];
+
   /** 載入教材：教材清單（textbooks/index.json 取得失敗時使用） */
   var defaultTextbookList = [
     { name: "台羅書寫練習", file: "台羅書寫練習.json" },
   ];
+
+  function openLoadTemplateMenu(list) {
+    if (!$loadTemplateMenu || !$loadTemplateBtn || !list || !list.length)
+      return;
+    $loadTemplateMenu.innerHTML = "";
+    list.forEach(function (entry) {
+      var name = entry.name || entry.file || "未命名模板";
+      var file = entry.file;
+      if (!file) return;
+      var li = document.createElement("li");
+      li.setAttribute("role", "none");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "menuitem");
+      btn.setAttribute("data-file", file);
+      btn.textContent = name;
+      btn.addEventListener("click", function () {
+        var path = "templates/" + file;
+        fetch(path)
+          .then(function (r) {
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+          })
+          .then(function (data) {
+            applyImportedSettings(data);
+            closeLoadTemplateMenu();
+          })
+          .catch(function (err) {
+            alert(
+              "無法載入模板：「" +
+                name +
+                "」\n" +
+                (err && err.message ? err.message : "請確認檔案存在且可讀取。"),
+            );
+          });
+      });
+      li.appendChild(btn);
+      $loadTemplateMenu.appendChild(li);
+    });
+    $loadTemplateMenu.hidden = false;
+    $loadTemplateBtn.setAttribute("aria-expanded", "true");
+    var rect = $loadTemplateBtn.getBoundingClientRect();
+    $loadTemplateMenu.style.top = rect.bottom + 4 + "px";
+    $loadTemplateMenu.style.left = rect.left + "px";
+    requestAnimationFrame(function () {
+      var menuRect = $loadTemplateMenu.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) {
+        $loadTemplateMenu.style.left =
+          window.innerWidth - menuRect.width - 8 + "px";
+      }
+      if (menuRect.bottom > window.innerHeight) {
+        $loadTemplateMenu.style.top = rect.top - menuRect.height - 4 + "px";
+      }
+    });
+  }
+
+  function closeLoadTemplateMenu() {
+    if ($loadTemplateMenu) {
+      $loadTemplateMenu.hidden = true;
+      if ($loadTemplateBtn)
+        $loadTemplateBtn.setAttribute("aria-expanded", "false");
+    }
+  }
 
   function openLoadTextbookMenu(list) {
     if (!$loadTextbookMenu || !$loadTextbookBtn || !list || !list.length)
@@ -1459,9 +1614,39 @@
     }
   }
 
+  if ($loadTemplateBtn && $loadTemplateMenu) {
+    $loadTemplateBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      closeLoadTextbookMenu();
+      if ($loadTemplateMenu.hidden) {
+        fetch("templates/index.json?v=1.0.1")
+          .then(function (r) {
+            if (!r.ok) throw new Error("無法取得模板清單");
+            return r.json();
+          })
+          .then(function (list) {
+            if (Array.isArray(list) && list.length > 0) {
+              openLoadTemplateMenu(list);
+            } else {
+              openLoadTemplateMenu(defaultTemplateList);
+            }
+          })
+          .catch(function () {
+            openLoadTemplateMenu(defaultTemplateList);
+          });
+      } else {
+        closeLoadTemplateMenu();
+      }
+    });
+    $loadTemplateMenu.addEventListener("click", function (e) {
+      e.stopPropagation();
+    });
+  }
+
   if ($loadTextbookBtn && $loadTextbookMenu) {
     $loadTextbookBtn.addEventListener("click", function (e) {
       e.stopPropagation();
+      closeLoadTemplateMenu();
       if ($loadTextbookMenu.hidden) {
         fetch("textbooks/index.json?v=1.0.1")
           .then(function (r) {
@@ -1482,13 +1667,15 @@
         closeLoadTextbookMenu();
       }
     });
-    document.addEventListener("click", function () {
-      closeLoadTextbookMenu();
-    });
     $loadTextbookMenu.addEventListener("click", function (e) {
       e.stopPropagation();
     });
   }
+
+  document.addEventListener("click", function () {
+    closeLoadTextbookMenu();
+    closeLoadTemplateMenu();
+  });
 
   /** 匯出設定為 JSON 檔 */
   function exportSettingsToJson() {
@@ -1560,6 +1747,7 @@
           id: item.id,
         });
       });
+      ensureUniqueItemIds();
     }
     if (data.lineStyle === "single" || data.lineStyle === "triple") {
       state.lineStyle = data.lineStyle;
@@ -1789,10 +1977,33 @@
       });
   });
 
-  // 初始渲染
-  renderItemList();
-  renderPreview();
-  undoStack = [];
-  redoStack = [];
-  updateHistoryButtonState();
+  /** 沒有 LocalStorage 時改載入 intro 範例（操作介紹）；完成後才開始定期存檔，避免先寫入預設空白狀態 */
+  function finishInitialLoad() {
+    undoStack = [];
+    redoStack = [];
+    updateHistoryButtonState();
+    lastPersistedJson = JSON.stringify(getSnapshot());
+    setInterval(persistProgressIfChanged, 5000);
+  }
+
+  if (loadProgressFromLocalStorage()) {
+    finishInitialLoad();
+  } else {
+    fetch("templates/intro.json")
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.statusText);
+        return r.json();
+      })
+      .then(function (data) {
+        isApplyingHistory = true;
+        applyImportedSettings(data);
+        isApplyingHistory = false;
+        finishInitialLoad();
+      })
+      .catch(function () {
+        renderItemList();
+        renderPreview();
+        finishInitialLoad();
+      });
+  }
 })();

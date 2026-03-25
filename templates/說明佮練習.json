@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "type": "content",
+      "content": "# 學習單標題\n1. 練習目標\n2. 練習目標\n3. 練習目標",
+      "id": "item-123"
+    },
+    {
+      "description": "練習",
+      "exampleText": "寫字 siá-jī\n練習 liān-si̍p",
+      "lineCount": 10,
+      "id": "item-124"
+    }
+  ],
+  "lineStyle": "single",
+  "lineSpacingDelta": 0,
+  "fontSize": 24,
+  "pageHeader": ""
+}
