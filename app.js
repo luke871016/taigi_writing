@@ -280,100 +280,44 @@
     updateHistoryButtonState();
   }
 
-  /** A4 工作區內文右左各 18mm，與 .worksheet-page padding 一致 */
-  var WORKSHEET_INNER_WIDTH_MM = 210 - 18 * 2;
-  /** 與 .preview-line .practice-zone min-width 一致 */
-  var PRACTICE_ZONE_MIN_WIDTH_PX = 80;
-  /** 與 .preview-line .example-text margin-right 0.5em 一致（以字級換算） */
-  var EXAMPLE_TEXT_MARGIN_RIGHT_EM = 0.5;
+  /** 全形「｜」U+FF5C（佮半形 | U+007C 攏會當做分欄） */
+  var EXAMPLE_COLUMN_SEP = "\uFF5C";
 
-  var exampleMeasureSpan = null;
-  function getExampleMeasureSpan() {
-    if (!exampleMeasureSpan) {
-      exampleMeasureSpan = document.createElement("span");
-      exampleMeasureSpan.setAttribute("aria-hidden", "true");
-      exampleMeasureSpan.style.cssText =
-        "position:absolute;left:-9999px;top:0;white-space:nowrap;visibility:hidden;pointer-events:none;font-family:Iansui,'Noto Sans TC',sans-serif;";
-      document.body.appendChild(exampleMeasureSpan);
-    }
-    return exampleMeasureSpan;
-  }
-
-  function getWorksheetTextAreaWidthPx() {
-    var ruler = document.createElement("div");
-    ruler.style.cssText =
-      "position:absolute;left:-9999px;width:" +
-      WORKSHEET_INNER_WIDTH_MM +
-      "mm;height:1px;visibility:hidden;box-sizing:border-box;";
-    document.body.appendChild(ruler);
-    var w = ruler.offsetWidth;
-    document.body.removeChild(ruler);
-    if (!w || w < 40) w = 400;
-    return w;
-  }
-
-  function measureExampleStringWidthPx(str) {
-    var span = getExampleMeasureSpan();
-    span.style.fontSize = state.fontSize + "px";
-    span.textContent = str;
-    return span.offsetWidth;
+  /**
+   * 將一行見本依半形 | 抑全形 ｜ 切成最多三欄（兩邊空白會 trim）；
+   * 超過兩個分隔符時，剩餘併入第三欄。
+   */
+  function splitExampleLineByBar(line) {
+    var parts = line.split(/\u007C|\uFF5C/);
+    parts = parts.map(function (p) {
+      return p.replace(/^\s+|\s+$/g, "");
+    });
+    if (parts.length <= 3) return parts;
+    return [parts[0], parts[1], parts.slice(2).join(EXAMPLE_COLUMN_SEP)];
   }
 
   /**
-   * 從剩餘字串切出第一「視覺行」（寬度不超過 maxWidthPx），空格處盡量斷詞。
+   * 將範本字依 Enter 分行，最多 lineCount 行，超出部分丟棄（不顯示）。
+   * 無程式換行：超過欄寬由 CSS overflow 裁切。
+   * 同一行內可用「｜」抑「|」分欄：一個＝兩欄、兩個＝三欄。
    */
-  function takeExampleLineFrom(remaining, maxWidthPx) {
-    if (!remaining) {
-      return { text: "", rest: "" };
-    }
-    if (measureExampleStringWidthPx(remaining) <= maxWidthPx) {
-      return { text: remaining, rest: "" };
-    }
-    var lastSpace = -1;
-    for (var i = 0; i < remaining.length; i++) {
-      var ch = remaining.charAt(i);
-      if (ch === " " || ch === "\t" || ch === "\u3000") {
-        lastSpace = i;
-      }
-      var slice = remaining.slice(0, i + 1);
-      if (measureExampleStringWidthPx(slice) > maxWidthPx) {
-        var br = lastSpace > 0 ? lastSpace : i > 0 ? i : 1;
-        var txt = remaining.slice(0, br);
-        var rst = remaining.slice(br).replace(/^[ \t\u3000]+/, "");
-        return { text: txt, rest: rst };
-      }
-    }
-    return { text: remaining, rest: "" };
-  }
-
-  /** 將範本字依寬度換行，最多 lineCount 行，超出部分丟棄（不顯示）。 */
-  function buildExampleLinesForItem(exampleText, lineCount, areaWidthPx) {
+  function buildExampleLinesForItem(exampleText, lineCount) {
     var n = Math.max(1, lineCount);
-    var marginRight = Math.round(EXAMPLE_TEXT_MARGIN_RIGHT_EM * state.fontSize);
-    var maxEx = Math.max(
-      16,
-      areaWidthPx - PRACTICE_ZONE_MIN_WIDTH_PX - marginRight,
-    );
     var wrapped = [];
     var paragraphs = String(exampleText != null ? exampleText : "").split(
       /\r?\n/,
     );
     for (var p = 0; p < paragraphs.length; p++) {
-      var rem = paragraphs[p];
-      /* 使用者按 Enter 產生的空段落 = 佔一視覺列（不再被略過） */
-      if (rem === "") {
-        wrapped.push("");
+      var para = paragraphs[p];
+      if (para === "") {
+        wrapped.push([""]);
         continue;
       }
-      while (rem) {
-        var take = takeExampleLineFrom(rem, maxEx);
-        wrapped.push(take.text);
-        rem = take.rest;
-      }
+      wrapped.push(splitExampleLineByBar(para));
     }
     var out = [];
     for (var i = 0; i < n; i++) {
-      out.push(i < wrapped.length ? wrapped[i] : "");
+      out.push(i < wrapped.length ? wrapped[i] : [""]);
     }
     return out;
   }
@@ -381,7 +325,6 @@
   /** 將練習項目展開為一維「顯示條目」陣列：一般行、分頁標記、圖片。供分頁與預覽使用 */
   function getFlatEntries() {
     var flat = [];
-    var areaW = getWorksheetTextAreaWidthPx();
     state.items.forEach(function (item, itemIndex) {
       if (item.type === "pageBreak") {
         flat.push({ pageBreak: true });
@@ -399,10 +342,10 @@
         return;
       }
       var n = Math.max(1, parseInt(item.lineCount, 10) || 1);
-      var exampleLines = buildExampleLinesForItem(item.exampleText, n, areaW);
+      var exampleLines = buildExampleLinesForItem(item.exampleText, n);
       for (var i = 0; i < n; i++) {
         flat.push({
-          exampleText: exampleLines[i] || "",
+          exampleColumns: exampleLines[i] || [""],
           descriptionAbove: i === 0 ? item.description || null : null,
           itemIndex: itemIndex,
         });
@@ -1195,6 +1138,12 @@
     });
   }
 
+  function exampleColumnsHaveContent(arr) {
+    return arr.some(function (c) {
+      return c != null && String(c).trim() !== "";
+    });
+  }
+
   /** 建立一筆顯示行（可選說明在上方 + 範例字 + 練習區 + 底線） */
   function createLineEl(flatLine, styleClass) {
     var wrap = document.createElement("div");
@@ -1209,14 +1158,33 @@
     row.className = "preview-line " + styleClass;
     var content = document.createElement("div");
     content.className = "row-content";
-    var example = document.createElement("span");
-    example.className = "example-text";
-    example.textContent = flatLine.exampleText || "\u00A0";
-    if (!flatLine.exampleText) {
-      example.setAttribute("aria-hidden", "true");
-      example.classList.add("example-text-placeholder");
+    var cols = flatLine.exampleColumns;
+    if (!cols || cols.length === 0) cols = [""];
+    var hasExample = exampleColumnsHaveContent(cols);
+    if (cols.length === 1) {
+      var example = document.createElement("span");
+      example.className = "example-text";
+      example.textContent = cols[0] || "\u00A0";
+      if (!hasExample) {
+        example.setAttribute("aria-hidden", "true");
+        example.classList.add("example-text-placeholder");
+      }
+      content.appendChild(example);
+    } else {
+      var colWrap = document.createElement("div");
+      colWrap.className = "example-text-columns";
+      cols.forEach(function (colText, idx) {
+        var sp = document.createElement("span");
+        sp.className = "example-text";
+        sp.textContent = colText || "\u00A0";
+        if (!hasExample && idx === 0) {
+          sp.setAttribute("aria-hidden", "true");
+          sp.classList.add("example-text-placeholder");
+        }
+        colWrap.appendChild(sp);
+      });
+      content.appendChild(colWrap);
     }
-    content.appendChild(example);
     var zone = document.createElement("div");
     zone.className = "practice-zone";
     var baselineLine = document.createElement("span");

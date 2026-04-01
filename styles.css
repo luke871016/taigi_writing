@@ -972,22 +972,44 @@ a {
   grid-row: 1;
   display: flex;
   align-items: baseline;
+  gap: 0.5em;
   min-width: 0;
   position: relative;
   z-index: 1;
 }
 
+/* 見本：食煞閣留 80px 予書寫區，袂像 grid 彼種定半屏 */
+.preview-line .row-content > .example-text,
+.preview-line .row-content > .example-text-columns {
+  flex: 1 1 0%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+/* 單欄見本：超寬裁切（無程式換行） */
 .preview-line .example-text {
-  flex-shrink: 0;
   font-family: "Iansui", sans-serif;
   font-size: var(--font-size-px);
   line-height: var(--line-height-px);
   color: #aaa;
-  margin-right: 0.5em;
-  /* 每列僅一視覺行：換行由程式依行數分配，避免與量測不一致時再被瀏覽器折行 */
   white-space: nowrap;
   overflow: hidden;
-  max-width: calc(100% - 80px - 0.5em);
+}
+
+/* 字詞見本：「｜」或「|」分欄（兩欄或三欄），欄內超寬裁切 */
+.preview-line .example-text-columns {
+  display: flex;
+  align-items: baseline;
+  gap: 0.35em;
+}
+
+.preview-line .example-text-columns .example-text {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  max-width: none;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 /* 無範例文字時仍保留同高佔位，讓行高與間距一致 */
@@ -1001,8 +1023,8 @@ a {
 }
 
 .preview-line .practice-zone {
-  flex: 1;
-  min-width: 80px;
+  flex: 0 0 10px;
+  min-width: 10px;
   min-height: var(--line-height-px);
   position: relative;
 }
