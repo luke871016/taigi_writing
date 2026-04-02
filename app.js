@@ -134,8 +134,7 @@
   const $insertMenuToggle = document.getElementById("insertMenuToggle");
   const $insertMenu = document.getElementById("insertMenu");
   const $insertPageBreak = document.getElementById("insertPageBreak");
-  const $insertToneChart = document.getElementById("insertToneChart");
-  const $insertSandhiChart = document.getElementById("insertSandhiChart");
+  const $insertCustomImage = document.getElementById("insertCustomImage");
   const $insertContent = document.getElementById("insertContent");
   const $exportPdf = document.getElementById("exportPdf");
   const $loadTemplateBtn = document.getElementById("loadTemplateBtn");
@@ -330,9 +329,18 @@
         flat.push({ pageBreak: true });
         return;
       }
-      if (item.type === "image" && item.imagePath) {
-        flat.push({ image: item.imagePath, itemIndex: itemIndex });
-        return;
+      if (item.type === "image") {
+        var url = item.imageUrl || item.imagePath;
+        if (url) {
+          var h = Number(item.imageHeightMm);
+          var heightMm = isFinite(h) && h > 0 ? h : undefined;
+          flat.push({
+            image: String(url),
+            imageHeightMm: heightMm,
+            itemIndex: itemIndex,
+          });
+          return;
+        }
       }
       if (item.type === "content") {
         flat.push({
@@ -367,10 +375,19 @@
     return h;
   }
 
-  /** 插入圖片區塊在預覽/分頁時佔用的高度（70mm 換算成 px，與單頁內容區 257mm 同比例） */
-  function getImageBlockHeightPx() {
+  /** 插入圖片區塊在預覽/分頁時佔用的高度（含上下 margin，與單頁內容區 257mm 同比例） */
+  function getImageBlockHeightPx(imageHeightMm) {
     var contentH = getContentHeightPx();
-    return Math.round((100 / 257) * contentH);
+    var mm = Number(imageHeightMm);
+    // 舊版資料可能沒有 imageHeightMm：沿用原本的「固定預留高度」行為
+    // 避免舊圖載入後分頁高度大量改變。
+    if (!isFinite(mm) || mm <= 0) {
+      return Math.round((100 / 257) * contentH);
+    }
+    var imgH = Math.round((mm / 257) * contentH);
+    // .preview-image-block img 上下各 0.5em（父層字級=state.fontSize），合計 1em
+    var marginPx = Math.round(state.fontSize);
+    return imgH + marginPx;
   }
 
   // cache: key = `${fontSizePx}|${rawContent}`
@@ -430,7 +447,8 @@
       var estimated = Math.ceil(lines * lh * 1.25);
       return Math.max(minH, Math.min(estimated, getContentHeightPx() * 0.6));
     } finally {
-      if (measureWrap && measureWrap.parentNode) measureWrap.parentNode.removeChild(measureWrap);
+      if (measureWrap && measureWrap.parentNode)
+        measureWrap.parentNode.removeChild(measureWrap);
     }
   }
 
@@ -472,7 +490,6 @@
     var lh = getLineHeightPx();
     var slotH = getSlotHeightForPagination();
     var descH = getDescriptionHeightPx();
-    var imgH = getImageBlockHeightPx();
     var flat = getFlatEntries();
     var pages = [];
     var page = [];
@@ -488,6 +505,7 @@
         continue;
       }
       if (entry.image) {
+        var imgH = getImageBlockHeightPx(entry.imageHeightMm);
         if (used + imgH > contentH && page.length > 0) {
           pages.push(page);
           page = [];
@@ -691,6 +709,10 @@
     pushUndoSnapshot();
     if (field === "lineCount") {
       state.items[index].lineCount = Math.max(1, parseInt(value, 10) || 1);
+    } else if (field === "imageHeightMm") {
+      var mm = Number(value);
+      if (!isFinite(mm) || mm <= 0) mm = 100;
+      state.items[index].imageHeightMm = Math.max(10, Math.min(250, mm));
     } else {
       state.items[index][field] = value;
     }
@@ -884,10 +906,7 @@
         row.className = "item-field item-field-last";
         var label = document.createElement("span");
         label.className = "item-special-label";
-        label.textContent =
-          item.imagePath && item.imagePath.indexOf("變調") !== -1
-            ? "變調圖"
-            : "聲調音值圖";
+        label.textContent = "自訂圖片";
         var btn = document.createElement("button");
         btn.type = "button";
         btn.className = "btn-remove";
@@ -962,6 +981,46 @@
         row.appendChild(btn);
         row.appendChild(dragHandle);
         wrap.appendChild(row);
+
+        var urlRow = document.createElement("div");
+        urlRow.className = "item-field";
+        var urlLabel = document.createElement("label");
+        urlLabel.textContent = "圖片網址";
+        var urlInput = document.createElement("input");
+        urlInput.type = "text";
+        urlInput.placeholder = "例如：images/xxx.png 或 https://...";
+        urlInput.value = item.imageUrl || item.imagePath || "";
+        urlInput.addEventListener("input", function () {
+          setItemField(getBlockIndex(wrap), "imageUrl", urlInput.value);
+        });
+        urlRow.appendChild(urlLabel);
+        urlRow.appendChild(urlInput);
+        wrap.appendChild(urlRow);
+
+        var heightRow = document.createElement("div");
+        heightRow.className = "item-field item-field-last";
+        var heightLabel = document.createElement("label");
+        heightLabel.textContent = "圖片懸度 (mm)";
+        var heightInput = document.createElement("input");
+        heightInput.type = "number";
+        heightInput.min = "10";
+        heightInput.max = "250";
+        heightInput.step = "1";
+        var initHeight = Number(item.imageHeightMm);
+        if (!isFinite(initHeight) || initHeight <= 0) initHeight = 100;
+        heightInput.value = initHeight;
+        heightInput.addEventListener("input", function () {
+          var idx = getBlockIndex(wrap);
+          setItemField(idx, "imageHeightMm", heightInput.value);
+          // 反映 clamp 後的結果，避免 UI 跟狀態落差
+          if (state.items[idx] && state.items[idx].imageHeightMm != null) {
+            heightInput.value = state.items[idx].imageHeightMm;
+          }
+        });
+        heightRow.appendChild(heightLabel);
+        heightRow.appendChild(heightInput);
+        wrap.appendChild(heightRow);
+
         $itemList.appendChild(wrap);
         return;
       }
@@ -1311,9 +1370,13 @@
           var imgWrap = document.createElement("div");
           imgWrap.className = "preview-image-block";
           var img = document.createElement("img");
+          img.crossOrigin = "anonymous";
           img.src = entry.image;
-          img.alt =
-            entry.image.indexOf("聲調音值") !== -1 ? "聲調音值圖" : "變調圖";
+          img.alt = "自訂圖片";
+          if (entry.imageHeightMm) {
+            img.style.height = String(entry.imageHeightMm) + "mm";
+            img.style.maxHeight = "none"; // 讓設定的高度可高於 CSS 預設上限
+          }
           imgWrap.appendChild(img);
           currentGroup.appendChild(imgWrap);
           linesEl.appendChild(currentGroup);
@@ -1461,14 +1524,13 @@
       insertBelowCurrent({ type: "pageBreak" });
     });
   }
-  if ($insertToneChart) {
-    $insertToneChart.addEventListener("click", function () {
-      insertBelowCurrent({ type: "image", imagePath: "images/聲調音值圖.png" });
-    });
-  }
-  if ($insertSandhiChart) {
-    $insertSandhiChart.addEventListener("click", function () {
-      insertBelowCurrent({ type: "image", imagePath: "images/變調圖.png" });
+  if ($insertCustomImage) {
+    $insertCustomImage.addEventListener("click", function () {
+      insertBelowCurrent({
+        type: "image",
+        imageUrl: "",
+        imageHeightMm: 100,
+      });
     });
   }
   if ($insertContent) {
@@ -1686,8 +1748,19 @@
         if (item.type === "pageBreak") {
           return { type: "pageBreak", id: item.id };
         }
-        if (item.type === "image" && item.imagePath) {
-          return { type: "image", imagePath: item.imagePath, id: item.id };
+        if (item.type === "image") {
+          var imageUrl = item.imageUrl || item.imagePath;
+          var heightMm = undefined;
+          var mm = Number(item.imageHeightMm);
+          if (isFinite(mm) && mm > 0) {
+            heightMm = Math.max(10, Math.min(250, mm));
+          }
+          return {
+            type: "image",
+            imageUrl: imageUrl ? String(imageUrl) : "",
+            imageHeightMm: heightMm,
+            id: item.id,
+          };
         }
         if (item.type === "content") {
           return {
@@ -1727,10 +1800,17 @@
         if (item.type === "pageBreak") {
           return ensureItemId({ type: "pageBreak", id: item.id });
         }
-        if (item.type === "image" && item.imagePath) {
+        if (item.type === "image") {
+          var url = item.imageUrl || item.imagePath;
+          var heightMm = undefined;
+          var mm = Number(item.imageHeightMm);
+          if (isFinite(mm) && mm > 0) {
+            heightMm = Math.max(10, Math.min(250, mm));
+          }
           return ensureItemId({
             type: "image",
-            imagePath: String(item.imagePath),
+            imageUrl: url != null ? String(url) : "",
+            imageHeightMm: heightMm,
             id: item.id,
           });
         }
