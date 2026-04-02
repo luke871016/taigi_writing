@@ -373,14 +373,65 @@
     return Math.round((100 / 257) * contentH);
   }
 
-  /** 內文區塊估計高度：依行數與行高估算，至少約 3 行高 */
+  // cache: key = `${fontSizePx}|${rawContent}`
+  // 段落文字高度會隨字級（font-size）而變；用快取避免拖曳/調參時重複 parse+量測
+  var contentBlockHeightCache = Object.create(null);
+
+  /** 內文區塊高度：用實際渲染高度取代「依 \\n 次數粗估」 */
   function getContentBlockHeightPx(contentText) {
-    var text = typeof contentText === "string" ? contentText : "";
-    var lines = text ? (text.match(/\n/g) || []).length + 1 : 1;
-    var lh = getLineHeightPx();
-    var minH = lh * 3;
-    var estimated = Math.ceil(lines * lh * 1.25);
-    return Math.max(minH, Math.min(estimated, getContentHeightPx() * 0.6));
+    var raw = typeof contentText === "string" ? contentText : "";
+    var cacheKey = String(state.fontSize) + "|" + raw;
+    if (contentBlockHeightCache[cacheKey]) {
+      return contentBlockHeightCache[cacheKey];
+    }
+
+    // 用真實 DOM 高度取代「用 \\n 次數粗估」，
+    // 因 Markdown/段落軟換行會把很多換行吃掉，造成高度高估而提早換頁。
+    var measureWrap = null;
+    try {
+      // 內文可用寬度 = 210mm - 18mm*2 = 174mm（對齊 .worksheet-page padding）
+      measureWrap = document.createElement("div");
+      measureWrap.style.cssText =
+        "position:absolute;left:-99999px;top:-99999px;width:174mm;visibility:hidden;pointer-events:none;";
+      // .preview-content-block 用 em/0.65em 計算高度，所以要把父層字級對齊到目前字級
+      measureWrap.style.fontSize = state.fontSize + "px";
+
+      var group = document.createElement("div");
+      group.className = "preview-item-group";
+
+      var contentWrap = document.createElement("div");
+      contentWrap.className = "preview-content-block";
+
+      if (typeof marked !== "undefined" && raw.trim()) {
+        contentWrap.innerHTML = marked.parse(raw);
+      } else {
+        contentWrap.textContent = raw || "\u00A0";
+      }
+
+      group.appendChild(contentWrap);
+      measureWrap.appendChild(group);
+      $worksheetPreview.appendChild(measureWrap);
+
+      var h = measureWrap.offsetHeight;
+      if (!h || h < 10) h = getLineHeightPx() * 3;
+      // 偏保守：不要讓偶發量測誤差大到失控（最多當作內容區 60%）
+      // 仍保留上限，避免單一段落造成分頁計算爆量。
+      var contentH = getContentHeightPx();
+      h = Math.min(h, contentH * 0.6);
+
+      contentBlockHeightCache[cacheKey] = h;
+      return h;
+    } catch (e) {
+      // fallback：回到舊的粗估邏輯（在 marked 失效等狀況時）
+      var text = raw;
+      var lines = text ? (text.match(/\n/g) || []).length + 1 : 1;
+      var lh = getLineHeightPx();
+      var minH = lh * 3;
+      var estimated = Math.ceil(lines * lh * 1.25);
+      return Math.max(minH, Math.min(estimated, getContentHeightPx() * 0.6));
+    } finally {
+      if (measureWrap && measureWrap.parentNode) measureWrap.parentNode.removeChild(measureWrap);
+    }
   }
 
   /** 1cm 的 px 值（用於需要時換算）；ruler 須設 10mm 才會量到正確高度，0mm 會得到 0 */
