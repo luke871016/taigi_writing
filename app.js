@@ -1682,7 +1682,7 @@
       e.stopPropagation();
       closeLoadTextbookMenu();
       if ($loadTemplateMenu.hidden) {
-        fetch("templates/index.json?v=1.0.2")
+        fetch("templates/index.json?v=1.0.3")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得模板清單");
             return r.json();
@@ -1711,7 +1711,7 @@
       e.stopPropagation();
       closeLoadTemplateMenu();
       if ($loadTextbookMenu.hidden) {
-        fetch("textbooks/index.json?v=1.0.2")
+        fetch("textbooks/index.json?v=1.0.3")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得教材清單");
             return r.json();
