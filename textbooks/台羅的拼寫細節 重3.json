@@ -45,7 +45,7 @@
     },
     {
       "type": "content",
-      "content": "## o 的讀音\no 佇台語的實際讀音佇無仝腔口有 [ǝ]（接近ㄜ） 佮 [o]（接近ㄛ）佮 [ɔ]（佮 oo 無明顯區分） 三種音，佇辭典的範例發音是發 /ǝ/ 的音。\n\n多數人猶是有 o 佮 oo 的區分，恁會當提下跤遮的詞問厝內的人，實際去聽𪜶的發音有啥物精差。",
+      "content": "## o 的讀音\no 佇台語的實際讀音佇無仝腔口有 [ǝ]（接近ㄜ） 佮 [o]（接近ㄛ）佮 [ɔ]（佮 oo 無明顯區分） 三種音，佇辭典的範例發音是發 /ǝ/ 的音。\n\n多數人猶是有 o 佮 oo 的區分，恁會當提下跤遮的詞問厝內的人，實際去聽𪜶的發音有啥物精差。毋過「蚵仔／芋仔」因為真出名，真濟人顛倒無遵照家己的腔口咧講，洪惟仁先生的地圖甚至共「蚵仔」佮其他的 /o/ 分開做兩張圖。",
       "id": "item-157"
     },
     {
@@ -56,13 +56,13 @@
     },
     {
       "type": "content",
-      "content": "## oo 的省略\n- onn、om([漳腔音](https://www.facebook.com/photo?fbid=1101904899863494&set=a.1058550404198944&locale=ms_MY))、ong、ok、op([漳腔音](https://www.facebook.com/photo?fbid=1212975865423063&set=a.1058550404198944&locale=zh_TW)) 其實是 oonn、oom、oong、ook、oop 的縮寫\n- 這五个韻尾環境並無區分 o 佮 oo，毋過書寫規則是寫一个 o。\n- ooh 佮 oh 佇台語就有區分。\n- 補充：其實 moo 佮 mo 嘛無區分，毋過書寫規則是寫 moo。",
+      "content": "## oo 的省略\n- onn、om([漳腔音](https://www.facebook.com/photo?fbid=1101904899863494&set=a.1058550404198944&locale=ms_MY))、ong、ok、op([漳腔音](https://www.facebook.com/photo?fbid=1212975865423063&set=a.1058550404198944&locale=zh_TW)) 其實是 oonn、oom、oong、ook、oop 的縮寫\n- 這五个韻尾環境並無區分 o 佮 oo，毋過書寫規則是寫一个 o。\n- ooh 佮 oh 佇台語就有區分，下跤「線索 suànn-soh」佮「按呢喔 án-ne--ooh」的 oh 佮 ooh 就是無仝寫法。\n- 補充：其實 m/n/ng 嘛無區分 o 佮 oo，毋過書寫規則是寫 moo／noo／ngoo。",
       "id": "item-150"
     },
     {
-      "description": "onn（唔唔睏）、om（人參[漳]）、ong（戇戇）、ok（惡質）、op（麻橐仔）、oh（線索）",
-      "exampleText": "onn-onn-khùn|jîn-som|gōng-gōng\nok-tsit|muâ-lop-á|suànn-soh",
-      "lineCount": 2,
+      "description": "onn（唔唔睏）、om（人參[漳]）、ong（戇戇）、ok（惡質）、op（麻橐仔[漳]）、oh（線索）、ooh（按呢--喔）",
+      "exampleText": "onn-onn-khùn|jîn-som|gōng-gōng\nok-tsit|muâ-lop-á|suànn-soh\n||án-ne--ooh",
+      "lineCount": 3,
       "id": "item-151"
     }
   ],
