@@ -1,0 +1,115 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "type": "content",
+      "content": "# 台語的聲調佮變調\n\n台語是聲調語言，有七个聲調，閣有複雜的變調規則，咱會佇這个講義對聲調有基礎的理解，閣有台羅標註聲調的規範。\n\n## 描述音懸的方式\n一般描述會用「起點」+「方向」去描述，比論講第一調本調是「高平」，起點是懸--的，方向是平--的；第二調本調是「高降」，起點是懸--的，方向是降--的。入聲的聲落尾會收束，通常會講是「促音」，比論講第四調本調是「中平促」。\n\n另外嘛會用數字表示相對音懸的變化，1上低，5上懸，0表示促音，第一調的本調是 33；第二調 53；第三調 11、第四調 330……（聲調的實際音值有腔口差，嘛有個體差異，無仝語言學家的記錄佮認定嘛無一定仝款。嘛有人干焦分三度，用 123 記 niâ）\n",
+      "id": "item-160"
+    },
+    {
+      "type": "image",
+      "imageUrl": "images/聲調音值圖.jpg",
+      "imageHeightMm": 70,
+      "id": "item-159"
+    },
+    {
+      "type": "content",
+      "content": "## 聲調的標記\n聲調的符號會標記佇「主要元音」的頂面，第一調佮第四調毋免標，第二調、第三調、第五調、第七調、第八調有家己的符號。\n\n第四調佮第八調是入聲，有 -p -t -k -h 結尾的四種入聲韻尾，看著結尾是 ptkh 就知影是入聲，若是主要元音有畫直劃，就是第八調，像「𬦰 peh」是第四調「白 pe̍h」是第八調。\n\n### 啥物是主要元音？\n若是複元音，聲調符號愛標佇主要元音的面頂。就是喙舌位置愈低、喙愈開的音較優先。  \n人權排序是 a>oo>e=o>i=u，iu 佮 ui 愛標佇後壁彼个，比論講 uí 佮 iú。\n\n### 第六調？\n干焦鹿港腔佮中國泉州話有八聲調的系統，這馬多數的台語第六調合併入去第七調，毋過有足濟教材文獻佮口訣會鬥第二調的字，這是對漳州韻書傳承落來的錯誤。",
+      "id": "item-168"
+    },
+    {
+      "description": "七个聲調（跤、手、喙、腹、頭、鼻、目）",
+      "exampleText": "kha tshiú tshuì pak thâu phīnn ba̍k",
+      "lineCount": 1,
+      "id": "item-173"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-166"
+    },
+    {
+      "type": "content",
+      "content": "## 台語的變調\n像華語的「ㄗㄨㄥˇㄊㄨㄥˇ」實際上會讀「ㄗㄨㄥ35 ㄊㄨㄥ11」，台語的變調比華語閣較普遍、單獨講一个名詞的時陣，落尾彼字唸本調，其他的字「全部攏愛變調」。\n\n變調的規則會使畫做像下跤的圖，1 7 3 2 四个調是一个循環、5 愛看腔口，入聲的 h 尾佮 ptk 尾的規則又閣無仝。較早的教材定定會講「免背、靠語感」，毋過我猶是建議逐家背起來，愛會曉直接共圖畫--出來，練甲變做直覺反應，聽著一个音愛想會著伊的本調。",
+      "id": "item-163"
+    },
+    {
+      "type": "image",
+      "imageUrl": "images/變調圖.png",
+      "imageHeightMm": 45,
+      "id": "item-162"
+    },
+    {
+      "type": "content",
+      "content": "## 變調毋是真正意義的「對第X調變做第X調」\n\n變調的規則描述其實只是為著方便教學佮記憶爾爾，並毋是真正「變做另外一个聲調」，像入聲非 h 尾的聲調，變調了後的音值並無佮任何其他聲調本調仝款，甚至第八調的本調又閣有豐富的腔口差。部份教材會為著方便，直接寫「第四調變第八調，第八調變第四調」。\n\n一个聲調有伊的「本調音值」佮「變調音值」兩个狀態，愛看條件知影愛講佗一个音，羅馬字咧書寫攏是「寫本調」。遮的練習語詞攏是每一个聲調重複出現的詞，頭前的音節讀變調、後壁的音節讀本調。",
+      "id": "item-165"
+    },
+    {
+      "description": "第一調（芳芳、安心、虛華、兄哥）",
+      "exampleText": "phang-phang|an-sim\nhi-hua|hiann-ko",
+      "lineCount": 2,
+      "id": "item-164"
+    },
+    {
+      "description": "第二調（海海、䆀手、米酒、勉強）",
+      "exampleText": "hái-hái|bái-tshiú\nbí-tsiú|bián-kióng",
+      "lineCount": 2,
+      "id": "item-169"
+    },
+    {
+      "description": "第三調（臭臭、愛睏、按算、興趣）",
+      "exampleText": "tshàu-tshàu|ài-khùn\nàn-sǹg|hìng-tshù",
+      "lineCount": 2,
+      "id": "item-170"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-171"
+    },
+    {
+      "description": "第四調 -h（藃藃、鴨肉、拍鐵、爍爁）",
+      "exampleText": "hiauh-hiauh|ah-bah\nphah-thih|sih-nah",
+      "lineCount": 2,
+      "id": "item-172"
+    },
+    {
+      "description": "第四調 -p -t -k（澀澀、落漆、角色、鬱卒）",
+      "exampleText": "siap-siap|lak-tshat\nkak-sik|ut-tsut",
+      "lineCount": 2,
+      "id": "item-174"
+    },
+    {
+      "description": "第五調（紅紅、眠床、無閒、魚頭）",
+      "exampleText": "âng-âng|bîn-tshn̂g\nbô-îng|hî-thâu",
+      "lineCount": 2,
+      "id": "item-175"
+    },
+    {
+      "description": "第七調（霧霧、議會、戇話、後代）",
+      "exampleText": "bū-bū|gī-huē\ngōng-uē|āu-tāi",
+      "lineCount": 2,
+      "id": "item-176"
+    },
+    {
+      "description": "第八調 -h（白白、食物[白音]、白食、白鶴）",
+      "exampleText": "pe̍h-pe̍h|tsia̍h-mi̍h\npe̍h-tsia̍h|pe̍h-ho̍h",
+      "lineCount": 2,
+      "id": "item-177"
+    },
+    {
+      "description": "第八調 -p -t -k（捷捷、目的、學術、獨立）",
+      "exampleText": "tsia̍p-tsia̍p|bo̍k-ti̍k\nha̍k-su̍t|to̍k-li̍p",
+      "lineCount": 2,
+      "id": "item-178"
+    },
+    {
+      "description": "綜合練習（請家己揣例詞練習、觀察每一个音節是本調抑是變調、音懸是按怎變化）",
+      "exampleText": "",
+      "lineCount": 7,
+      "id": "item-179"
+    }
+  ],
+  "lineStyle": "triple",
+  "lineSpacingDelta": 0,
+  "fontSize": 24,
+  "pageHeader": "2. 台語的聲調佮變調"
+}

@@ -28,13 +28,13 @@
       "description": "聲母——喉音、齒音",
       "exampleText": "h ts tsh s j",
       "lineCount": 3,
-      "id": "item-7"
+      "id": "item-180"
     },
     {
       "description": "韻母——單元音",
       "exampleText": "a i u e o oo",
       "lineCount": 3,
-      "id": "item-7"
+      "id": "item-181"
     },
     {
       "type": "pageBreak",
@@ -44,13 +44,13 @@
       "description": "韻母——複元音 ①",
       "exampleText": "ai au ia iu io",
       "lineCount": 3,
-      "id": "item-8"
+      "id": "item-182"
     },
     {
       "description": "韻母——複元音 ②",
       "exampleText": "ua ui ue iau uai",
       "lineCount": 3,
-      "id": "item-5"
+      "id": "item-183"
     },
     {
       "description": "鼻化元音 ①",
@@ -74,11 +74,11 @@
       "description": "鼻音韻母 ②",
       "exampleText": "ang ing ong iang iong uang",
       "lineCount": 3,
-      "id": "item-12"
+      "id": "item-184"
     },
     {
       "type": "pageBreak",
-      "id": "item-11"
+      "id": "item-185"
     },
     {
       "description": "入聲韻母 -p",
@@ -108,7 +108,7 @@
       "description": "入聲韻母 -h ②",
       "exampleText": "iuh ioh uah uih ueh iauh",
       "lineCount": 3,
-      "id": "item-6"
+      "id": "item-186"
     },
     {
       "description": "聲化韻母",
@@ -118,7 +118,7 @@
     },
     {
       "type": "pageBreak",
-      "id": "item-10"
+      "id": "item-187"
     },
     {
       "description": "七聲調（東 黨 棟 督 同 洞 毒）",
@@ -142,7 +142,7 @@
       "description": "自由練習、筆記",
       "exampleText": "",
       "lineCount": 11,
-      "id": "item-6"
+      "id": "item-188"
     },
     {
       "type": "pageBreak",
@@ -150,17 +150,18 @@
     },
     {
       "type": "image",
-      "imagePath": "images/聲調音值圖.png",
+      "imageUrl": "images/聲調音值圖.jpg",
+      "imageHeightMm": 121,
       "id": "item-21"
     },
     {
       "type": "image",
-      "imagePath": "images/變調圖.png",
+      "imageUrl": "images/變調圖.png",
       "id": "item-22"
     }
   ],
   "lineStyle": "triple",
   "lineSpacingDelta": 0.07,
   "fontSize": 24,
-  "pageHeader": "台羅書寫練習"
+  "pageHeader": "1. 台羅書寫練習"
 }

@@ -34,7 +34,7 @@
     },
     {
       "type": "content",
-      "content": "## ian 佮 iat 的讀音\n- ian 有[ian]、[ien] 佮  [en] 三種讀音，辭典的範例發音是發 [ien]。\n- 華語 ㄧㄢ 普遍嘛是讀較接近 ㄧㄝㄣ，毋是 ㄧㄚㄣ，毋過華語無 en，除非是台語腔華語。\n- iat 有 [iat]、[iet]、佮 [et] 三種讀音，辭典的發音範例是 [iet]。",
+      "content": "## ian 佮 iat 的讀音\n- ian 有 [ian]、[ien] 佮  [en] 三種讀音，辭典的範例發音是發 [ien]。\n- 華語 ㄧㄢ 普遍嘛是讀較接近 ㄧㄝㄣ，毋是 ㄧㄚㄣ，毋過華語無 en，除非是台語腔華語。\n- iat 有 [iat]、[iet]、佮 [et] 三種讀音，辭典的發音範例是 [iet]。",
       "id": "item-148"
     },
     {
@@ -56,7 +56,7 @@
     },
     {
       "type": "content",
-      "content": "## oo 的省略\n- onn、om([漳腔音](https://www.facebook.com/photo?fbid=1101904899863494&set=a.1058550404198944&locale=ms_MY))、ong、ok、op([漳腔音](https://www.facebook.com/photo?fbid=1212975865423063&set=a.1058550404198944&locale=zh_TW)) 其實是 oonn、oom、oong、ook、oop 的縮寫\n- 這五个韻尾環境並無區分 o 佮 oo，毋過書寫規則是寫一个 o。\n- ooh 佮 oh 佇台語就有區分，下跤「線索 suànn-soh」的 soh 佮「按呢喔 án-ne--ooh」的 oh 佮 ooh 就是無仝寫法。\n- 補充：其實 m/n/ng 嘛無區分 o 佮 oo，毋過書寫規則是寫 moo／noo／ngoo。",
+      "content": "## oo 的省略\n- onn、om（[漳腔音](https://www.facebook.com/photo?fbid=1101904899863494&set=a.1058550404198944&locale=ms_MY)）、ong、ok、op（[漳腔音](https://www.facebook.com/photo?fbid=1212975865423063&set=a.1058550404198944&locale=zh_TW)） 其實是 oonn、oom、oong、ook、oop 的縮寫\n- 這五个韻尾環境並無區分 o 佮 oo，毋過書寫規則是寫一个 o。\n- ooh 佮 oh 佇台語就有區分，下跤「線索 suànn-soh」 佮「按呢喔 án-ne--ooh」  \n的 oh 佮 ooh 就是無仝寫法。\n- 補充：其實 m/n/ng 嘛無區分 o 佮 oo，毋過書寫規則是寫 moo／noo／ngoo。",
       "id": "item-150"
     },
     {
@@ -69,5 +69,5 @@
   "lineStyle": "triple",
   "lineSpacingDelta": 0,
   "fontSize": 24,
-  "pageHeader": "2.台羅的拼寫細節"
+  "pageHeader": "3.台羅的拼寫細節"
 }

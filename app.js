@@ -988,7 +988,7 @@
         urlLabel.textContent = "圖片網址";
         var urlInput = document.createElement("input");
         urlInput.type = "text";
-        urlInput.placeholder = "例如：images/xxx.png 或 https://...";
+        urlInput.placeholder = "請輸入圖片的網址";
         urlInput.value = item.imageUrl || item.imagePath || "";
         urlInput.addEventListener("input", function () {
           setItemField(getBlockIndex(wrap), "imageUrl", urlInput.value);
@@ -1711,7 +1711,7 @@
       e.stopPropagation();
       closeLoadTemplateMenu();
       if ($loadTextbookMenu.hidden) {
-        fetch("textbooks/index.json?v=1.0.6")
+        fetch("textbooks/index.json?v=1.0.7")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得教材清單");
             return r.json();
