@@ -9,6 +9,10 @@
 }
 
 :root {
+  /* 學習單標題、粗體：源起黑體 TW（emfont），備援為常見系統黑體 */
+  --font-sheet-emphasis:
+    "GenKiGothicTW", "PingFang TC", "Heiti TC", "Microsoft JhengHei",
+    "Noto Sans TC", sans-serif;
   --ink: #1a1a1a;
   --line: #333;
   --line-light: #ccc;
@@ -286,6 +290,29 @@ a {
 .radio-label input {
   width: 1rem;
   height: 1rem;
+  accent-color: var(--accent);
+}
+
+.checkbox-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.checkbox-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1.35;
+}
+
+.checkbox-label input {
+  width: 1rem;
+  height: 1rem;
+  margin-top: 0.15em;
+  flex-shrink: 0;
   accent-color: var(--accent);
 }
 
@@ -685,7 +712,16 @@ a {
 }
 
 .preview-content-block strong {
-  font-weight: 700;
+  font-family: var(--font-sheet-emphasis);
+  font-weight: 500;
+  /* 禁止瀏覽器對無對應字重的備援字型做「合成粗體」（易變糊、邊緣過粗） */
+  font-synthesis: style;
+}
+
+/* 內文粗體略縮，源起黑體佮 Iansui 混排時視覺較匀 */
+.preview-content-block p strong,
+.preview-content-block li strong {
+  font-size: 0.95em;
 }
 
 .preview-content-block em {
@@ -696,8 +732,10 @@ a {
 .preview-content-block h2,
 .preview-content-block h3 {
   margin: 0.6em 0 0.3em;
-  font-weight: 600;
+  font-family: var(--font-sheet-emphasis);
+  font-weight: 500;
   line-height: 1.3;
+  font-synthesis: style;
 }
 
 .preview-content-block h1 {
@@ -739,6 +777,17 @@ a {
 .preview-content-block pre code {
   padding: 0;
   background: none;
+}
+
+/* Markdown ==文字==：螢光筆標示（列印／PDF 以實色較穩） */
+.preview-content-block mark.md-mark {
+  font: inherit;
+  color: inherit;
+  background-color: rgba(255, 235, 120, 0.88);
+  box-decoration-break: clone;
+  -webkit-box-decoration-break: clone;
+  padding: 0 0.06em;
+  border-radius: 0.12em;
 }
 
 .btn-export {
@@ -901,11 +950,28 @@ a {
   right: 18mm;
   font-size: 0.85em;
   color: #555;
-  font-family: "Iansui", "Noto Sans TC", sans-serif;
+  font-family: var(--font-sheet-emphasis);
+  /* 與 emfont /500 的 @font-face 一致；若維持 400 會無對應 face，易觸發怪異匹配或合成 */
+  font-weight: 500;
+  font-synthesis: style;
   white-space: nowrap;
   max-width: calc(100% - 36mm);
   overflow: hidden;
   text-overflow: ellipsis;
+  pointer-events: none;
+}
+
+/* 頁碼：每頁下緣中央（與頁首相同字族，利於 PDF） */
+.worksheet-page-footer {
+  position: absolute;
+  bottom: 12mm;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.85em;
+  color: #666;
+  font-family: var(--font-sheet-emphasis);
+  font-weight: 500;
+  font-synthesis: style;
   pointer-events: none;
 }
 

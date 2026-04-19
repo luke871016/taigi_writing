@@ -1,0 +1,36 @@
+---
+description: 純靜態前端（HTML/CSS/JS）結構、慣例與無障礙
+globs: "**/*.{html,js,css}"
+alwaysApply: false
+---
+
+# 前端（HTML / CSS / JavaScript）
+
+本專案為無打包流程的靜態頁面（`index.html`、`app.js`、`styles.css`）。改動時維持既有架構，避免為小功能引入建置工具或大型相依。
+
+## HTML
+
+- 使用語意化區塊（例如 `header`、`main`），互動元件用 `button` 或對應原生控制項，避免把可點擊行為綁在無鍵盤支援的 `div` 上。
+- 專案根頁面維持適當的 `lang`（例如漢字介面與教材用字一致時的設定）；介面文案維持專案慣用的書寫風格。
+- 所有 `button` 標明 `type="button"`，除非確實要提交表單才用 `submit`。
+- 僅圖示或符號的按鈕必須有可供朗讀的名稱，例如 `aria-label`；下拉／選單搭配 `aria-expanded`、`aria-haspopup`、`role` 與 `hidden` 等既有模式。
+
+```html
+<!-- ❌ BAD：無類型、無名稱 -->
+<button onclick="...">ⓘ</button>
+
+<!-- ✅ GOOD -->
+<button type="button" aria-label="關於這个網頁的說明與更新資訊">ⓘ</button>
+```
+
+## JavaScript
+
+- 延續單一 IIFE 與現有 `state`、DOM 綁定方式；新增邏輯時優先接在既有函式與資料流上，避免平行寫第二套狀態管理。
+- 延續檔案內已出現的風格（例如 `var`／`const` 混用處以周邊程式為準，不要為了統一風格大範圍重排）。
+- 使用檔案頂部註解風格說明非顯而易見的修正（與現有區塊註解一致即可）。
+
+## CSS
+
+- 色彩、字級、間距優先使用 `:root` 內既有變數（如 `--ink`、`--accent`、`--sidebar-width`），新增變數時命名與語意與現有一致。
+- 版面沿用 `.app` 網格與現有區塊類名；避免無關區塊的大規模重排或與列印／PDF 版面假設衝突的改動。
+- 變更快取版號時，若專案慣例為在 `index.html` 的 `styles.css`／`app.js` 查詢字串上遞增，請一併更新以方便瀏覽器刷新。

@@ -5,6 +5,55 @@
 
 (function () {
   var nextItemId = 1;
+
+  /** 段落 Markdown：支援 ==文字== 轉成 <mark>（螢光筆）；只註冊一次，避免重複 marked.use */
+  var markedMarkExtensionInstalled = false;
+  function ensureMarkedMarkExtension() {
+    if (markedMarkExtensionInstalled || typeof marked === "undefined") return;
+    marked.use({
+      extensions: [
+        {
+          name: "mark",
+          level: "inline",
+          start: function (src) {
+            var i = src.indexOf("==");
+            return i === -1 ? undefined : i;
+          },
+          tokenizer: function (src, tokens) {
+            var rule = /^==([\s\S]+?)==/;
+            var match = rule.exec(src);
+            if (!match) return;
+            var inner = match[1];
+            var token = {
+              type: "mark",
+              raw: match[0],
+              tokens: [],
+            };
+            this.lexer.inlineTokens(inner, token.tokens);
+            return token;
+          },
+          renderer: function (token) {
+            return (
+              '<mark class="md-mark">' +
+              this.parser.parseInline(token.tokens) +
+              "</mark>"
+            );
+          },
+        },
+      ],
+    });
+    markedMarkExtensionInstalled = true;
+  }
+
+  /** 段落文字內容轉 HTML；無 marked 抑是空白時回傳 null（由呼叫端用 textContent） */
+  function paragraphMarkdownToHtml(raw) {
+    var s = typeof raw === "string" ? raw : "";
+    if (!s.trim()) return null;
+    if (typeof marked === "undefined") return null;
+    ensureMarkedMarkExtension();
+    return marked.parse(s);
+  }
+
   function ensureItemId(item) {
     if (!item.id) {
       item.id = "item-" + String(nextItemId++);
@@ -60,6 +109,8 @@
     fontSize: 24,
     pageHeader: "",
     focusedItemIndex: null,
+    showPageNumbers: false,
+    autoItemNumbers: false,
   };
   ensureAllItemIds();
   ensureUniqueItemIds();
@@ -81,6 +132,8 @@
       fontSize: state.fontSize,
       pageHeader: state.pageHeader,
       focusedItemIndex: state.focusedItemIndex,
+      showPageNumbers: !!state.showPageNumbers,
+      autoItemNumbers: !!state.autoItemNumbers,
     };
   }
 
@@ -153,6 +206,8 @@
   const $settingsToggle = document.getElementById("settingsToggle");
   const $settingsPanel = document.getElementById("settingsPanel");
   const $pageHeader = document.getElementById("pageHeader");
+  const $showPageNumbers = document.getElementById("showPageNumbers");
+  const $autoItemNumbers = document.getElementById("autoItemNumbers");
   const $infoButton = document.getElementById("infoButton");
   const $infoModal = document.getElementById("infoModal");
   const $infoModalClose = document.getElementById("infoModalClose");
@@ -203,6 +258,8 @@
       typeof snapshot.focusedItemIndex === "number"
         ? snapshot.focusedItemIndex
         : null;
+    state.showPageNumbers = snapshot.showPageNumbers === true;
+    state.autoItemNumbers = snapshot.autoItemNumbers === true;
 
     if ($fontSize) $fontSize.value = state.fontSize;
     if ($fontSizeValue) $fontSizeValue.textContent = state.fontSize + "px";
@@ -219,6 +276,9 @@
       .forEach(function (radio) {
         radio.checked = radio.value === state.lineStyle;
       });
+
+    if ($showPageNumbers) $showPageNumbers.checked = state.showPageNumbers;
+    if ($autoItemNumbers) $autoItemNumbers.checked = state.autoItemNumbers;
 
     applyPreviewVars();
     renderItemList();
@@ -355,11 +415,29 @@
         flat.push({
           exampleColumns: exampleLines[i] || [""],
           descriptionAbove: i === 0 ? item.description || null : null,
+          itemFirstLine: i === 0,
           itemIndex: itemIndex,
         });
       }
     });
     return flat;
+  }
+
+  /** 僅一般練習行（無 type 抑非 image／content／pageBreak）逐項編號（1 起算），key 為 state.items 的索引 */
+  function buildItemOrderByIndex() {
+    var map = {};
+    var n = 0;
+    state.items.forEach(function (item, idx) {
+      if (
+        item.type === "pageBreak" ||
+        item.type === "image" ||
+        item.type === "content"
+      )
+        return;
+      n++;
+      map[idx] = n;
+    });
+    return map;
   }
 
   /** 取得單頁內容區高度 257mm 在畫面上的 px 值；異常時用合理 fallback 避免只出一頁 */
@@ -419,8 +497,9 @@
       var contentWrap = document.createElement("div");
       contentWrap.className = "preview-content-block";
 
-      if (typeof marked !== "undefined" && raw.trim()) {
-        contentWrap.innerHTML = marked.parse(raw);
+      var mdHtml = paragraphMarkdownToHtml(raw);
+      if (mdHtml != null) {
+        contentWrap.innerHTML = mdHtml;
       } else {
         contentWrap.textContent = raw || "\u00A0";
       }
@@ -526,15 +605,18 @@
         used += blockH;
         continue;
       }
+      var showDescBlock =
+        !!entry.descriptionAbove ||
+        (state.autoItemNumbers && !!entry.itemFirstLine);
       var lineH = page.length === 0 ? lh : slotH;
-      if (entry.descriptionAbove) {
+      if (showDescBlock) {
         lineH += descH;
       }
       if (used + lineH > contentH && page.length > 0) {
         pages.push(page);
         page = [];
         used = 0;
-        lineH = lh + (entry.descriptionAbove ? descH : 0);
+        lineH = lh + (showDescBlock ? descH : 0);
       }
       page.push(entry);
       used += lineH;
@@ -597,6 +679,24 @@
     $pageHeader.addEventListener("input", updatePageHeader);
     $pageHeader.addEventListener("change", updatePageHeader);
     if (state.pageHeader) $pageHeader.value = state.pageHeader;
+  }
+
+  if ($showPageNumbers) {
+    $showPageNumbers.checked = !!state.showPageNumbers;
+    $showPageNumbers.addEventListener("change", function () {
+      pushUndoSnapshot();
+      state.showPageNumbers = !!$showPageNumbers.checked;
+      renderPreview();
+    });
+  }
+  if ($autoItemNumbers) {
+    $autoItemNumbers.checked = !!state.autoItemNumbers;
+    $autoItemNumbers.addEventListener("change", function () {
+      pushUndoSnapshot();
+      state.autoItemNumbers = !!$autoItemNumbers.checked;
+      renderItemList();
+      renderPreview();
+    });
   }
 
   // 關於／更新資訊視窗
@@ -812,6 +912,7 @@
   function renderItemList() {
     $itemList.innerHTML = "";
     lastDragOverId = null;
+    var orderMap = buildItemOrderByIndex();
     state.items.forEach(function (item, i) {
       var wrap = document.createElement("div");
       wrap.className = "item-block";
@@ -1105,7 +1206,7 @@
         textareaRow.className = "item-field item-field-content";
         var textarea = document.createElement("textarea");
         textarea.rows = 5;
-        textarea.placeholder = "有支援 Markdown 語法喔";
+        textarea.placeholder = "有支援 Markdown 語法";
         textarea.value = typeof item.content === "string" ? item.content : "";
         textarea.addEventListener("input", function () {
           setItemField(getBlockIndex(wrap), "content", textarea.value);
@@ -1146,7 +1247,11 @@
       var descRow = document.createElement("div");
       descRow.className = "item-field";
       var descLabel = document.createElement("label");
-      descLabel.textContent = "項目標題";
+      var wOrd = orderMap[i];
+      descLabel.textContent =
+        state.autoItemNumbers && wOrd != null
+          ? String(wOrd) + ". 項目標題"
+          : "項目標題";
       var descInput = document.createElement("input");
       descInput.type = "text";
       descInput.placeholder = "寫佇項目頂面的標題";
@@ -1163,7 +1268,7 @@
       var exInput = document.createElement("textarea");
       exInput.className = "item-example-textarea";
       exInput.rows = 3;
-      exInput.placeholder = "參考的字詞（可換行，換行後範本會另起一列）";
+      exInput.placeholder = "參考的字詞（會當用｜符號分欄位）";
       exInput.value = item.exampleText || "";
       exInput.addEventListener("input", function () {
         setItemField(getBlockIndex(wrap), "exampleText", exInput.value);
@@ -1255,13 +1360,31 @@
   }
 
   /** 建立一筆顯示行（可選說明在上方 + 範例字 + 練習區 + 底線） */
-  function createLineEl(flatLine, styleClass) {
+  function createLineEl(flatLine, styleClass, itemOrderByIndex) {
     var wrap = document.createElement("div");
     wrap.className = "preview-line-wrap";
-    if (flatLine.descriptionAbove) {
+    var showDescRow =
+      !!flatLine.descriptionAbove ||
+      (state.autoItemNumbers && !!flatLine.itemFirstLine);
+    if (showDescRow) {
       var desc = document.createElement("div");
       desc.className = "line-description";
-      desc.textContent = flatLine.descriptionAbove;
+      var ord =
+        state.autoItemNumbers && itemOrderByIndex
+          ? itemOrderByIndex[flatLine.itemIndex]
+          : null;
+      var text = "";
+      if (ord != null) text += String(ord) + ".";
+      var raw = flatLine.descriptionAbove;
+      var d =
+        raw != null && String(raw).replace(/^\s+|\s+$/g, "") !== ""
+          ? String(raw).replace(/^\s+|\s+$/g, "")
+          : "";
+      if (d) {
+        if (text) text += " ";
+        text += d;
+      }
+      desc.textContent = text || "\u00A0";
       wrap.appendChild(desc);
     }
     var row = document.createElement("div");
@@ -1344,8 +1467,9 @@
     $worksheetPreview.innerHTML = "";
     applyPreviewVars();
     var styleClass = state.lineStyle === "triple" ? "triple" : "single";
+    var itemOrderByIndex = buildItemOrderByIndex();
     var pages = computePages();
-    pages.forEach(function (pageEntries) {
+    pages.forEach(function (pageEntries, pageIndex) {
       var pageEl = document.createElement("div");
       pageEl.className = "worksheet-page";
       if (state.pageHeader) {
@@ -1392,8 +1516,9 @@
           var contentWrap = document.createElement("div");
           contentWrap.className = "preview-content-block";
           var raw = entry.content || "";
-          if (typeof marked !== "undefined" && raw.trim()) {
-            contentWrap.innerHTML = marked.parse(raw);
+          var mdHtml = paragraphMarkdownToHtml(raw);
+          if (mdHtml != null) {
+            contentWrap.innerHTML = mdHtml;
           } else {
             contentWrap.textContent = raw || "\u00A0";
           }
@@ -1410,11 +1535,19 @@
           currentGroup.setAttribute("data-item-index", String(entry.itemIndex));
           currentItemIndex = entry.itemIndex;
         }
-        currentGroup.appendChild(createLineEl(entry, styleClass));
+        currentGroup.appendChild(
+          createLineEl(entry, styleClass, itemOrderByIndex),
+        );
       }
       if (currentGroup) linesEl.appendChild(currentGroup);
       contentEl.appendChild(linesEl);
       pageEl.appendChild(contentEl);
+      if (state.showPageNumbers) {
+        var footerEl = document.createElement("div");
+        footerEl.className = "worksheet-page-footer";
+        footerEl.textContent = String(pageIndex + 1);
+        pageEl.appendChild(footerEl);
+      }
       $worksheetPreview.appendChild(pageEl);
     });
     updatePreviewEditingOutline();
@@ -1682,7 +1815,7 @@
       e.stopPropagation();
       closeLoadTextbookMenu();
       if ($loadTemplateMenu.hidden) {
-        fetch("templates/index.json?v=1.0.3")
+        fetch("templates/index.json?v=1.0.4")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得模板清單");
             return r.json();
@@ -1711,7 +1844,7 @@
       e.stopPropagation();
       closeLoadTemplateMenu();
       if ($loadTextbookMenu.hidden) {
-        fetch("textbooks/index.json?v=1.0.8")
+        fetch("textbooks/index.json?v=1.0.9")
           .then(function (r) {
             if (!r.ok) throw new Error("無法取得教材清單");
             return r.json();
@@ -1780,6 +1913,8 @@
       lineSpacingDelta: state.lineSpacingDelta,
       fontSize: state.fontSize,
       pageHeader: state.pageHeader || "",
+      showPageNumbers: !!state.showPageNumbers,
+      autoItemNumbers: !!state.autoItemNumbers,
     };
     var json = JSON.stringify(data, null, 2);
     var blob = new Blob([json], { type: "application/json" });
@@ -1865,6 +2000,10 @@
       state.pageHeader = data.pageHeader;
       if ($pageHeader) $pageHeader.value = state.pageHeader;
     }
+    state.showPageNumbers = data.showPageNumbers === true;
+    state.autoItemNumbers = data.autoItemNumbers === true;
+    if ($showPageNumbers) $showPageNumbers.checked = state.showPageNumbers;
+    if ($autoItemNumbers) $autoItemNumbers.checked = state.autoItemNumbers;
     applyPreviewVars();
     renderItemList();
     renderPreview();
@@ -2030,32 +2169,44 @@
       });
     }
 
-    createPdfFromFirstPage()
-      .then(function (pdf) {
-        // html2pdf 有時會多產生一頁空白，只保留第一頁
-        while (pdf.getNumberOfPages && pdf.getNumberOfPages() > 1) {
-          pdf.deletePage(pdf.getNumberOfPages());
-        }
-        function addNextPage(index) {
-          if (index >= pageArray.length) {
-            pdf.save(opt.filename);
-            return;
+    function runPdfExport() {
+      createPdfFromFirstPage()
+        .then(function (pdf) {
+          // html2pdf 有時會多產生一頁空白，只保留第一頁
+          while (pdf.getNumberOfPages && pdf.getNumberOfPages() > 1) {
+            pdf.deletePage(pdf.getNumberOfPages());
           }
-          return capturePageToCanvas(pageArray[index]).then(function (canvas) {
-            var imgData = canvas.toDataURL("image/jpeg", 0.98);
-            pdf.addPage();
-            pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
-            return addNextPage(index + 1);
-          });
-        }
-        return addNextPage(1);
-      })
-      .catch(function (err) {
-        console.error("PDF 匯出失敗", err);
-        alert(
-          "無法匯出 PDF：" + (err && err.message ? err.message : "請稍後再試"),
-        );
-      });
+          function addNextPage(index) {
+            if (index >= pageArray.length) {
+              pdf.save(opt.filename);
+              return;
+            }
+            return capturePageToCanvas(pageArray[index]).then(
+              function (canvas) {
+                var imgData = canvas.toDataURL("image/jpeg", 0.98);
+                pdf.addPage();
+                pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+                return addNextPage(index + 1);
+              },
+            );
+          }
+          return addNextPage(1);
+        })
+        .catch(function (err) {
+          console.error("PDF 匯出失敗", err);
+          alert(
+            "無法匯出 PDF：" +
+              (err && err.message ? err.message : "請稍後再試"),
+          );
+        });
+    }
+
+    // 等字型就緒再擷取；跨站 webfont 另須 index.html link 加 crossorigin 才會進 canvas
+    var fontsReady =
+      document.fonts && document.fonts.ready
+        ? document.fonts.ready
+        : Promise.resolve();
+    fontsReady.then(runPdfExport).catch(runPdfExport);
   });
 
   /** 沒有 LocalStorage 時改載入 intro 範例（操作介紹）；完成後才開始定期存檔，避免先寫入預設空白狀態 */

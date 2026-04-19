@@ -4,7 +4,13 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>台語寫字學習單編輯器</title>
-    <link rel="stylesheet" href="styles.css?v=1.0.9" />
+    <!-- crossorigin 必須：html2canvas 繪到 canvas 時，跨站字體須為 CORS 模式載入才會用，否則 PDF 會落回備援字型 -->
+    <link
+      href="https://font.emtech.cc/css/GenKiGothicTW/500"
+      rel="stylesheet"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="styles.css?v=1.0.11" />
   </head>
   <body>
     <div class="app">
@@ -216,6 +222,20 @@
                   </label>
                 </div>
               </div>
+
+              <div class="panel">
+                <h2>版面</h2>
+                <div class="checkbox-stack">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="showPageNumbers" />
+                    <span>頁碼</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="autoItemNumbers" />
+                    <span>項目編號</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -322,7 +342,10 @@
             <li>
               通匯入／匯出設定檔，共家己的學習單設定記起來，嘛通互相分享。
             </li>
-            <li>「段落文字」適合寫較長篇的文字，嘛有支援 Markdown 語法。</li>
+            <li>
+              「段落文字」適合寫較長篇的文字，嘛有支援 Markdown 語法；通過
+              <code>==文字==</code> 標示螢光筆重點。
+            </li>
             <li>「分頁標記」通指定系統佇佗位換後一頁。</li>
             <li>「模板」有預設的學習單版型，通直接載入使用抑是改內容。</li>
             <li>
@@ -338,6 +361,10 @@
           </ul>
         </div>
         <div class="info-modal-section">
+          <h3>2026.4.19</h3>
+          <ul>
+            <li>段落文字：支援 Markdown 的 <code>==螢光筆==</code> 語法</li>
+          </ul>
           <h3>2026.4.1</h3>
           <ul>
             <li>字詞見本：會使用「｜」佮「|」兩个符號分欄位</li>
@@ -359,6 +386,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <script src="app.js?v=1.0.10"></script>
+    <script src="app.js?v=1.0.12"></script>
   </body>
 </html>
