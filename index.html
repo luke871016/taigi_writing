@@ -2,7 +2,23 @@
 <html lang="und-hani">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#5c8273" />
+    <meta name="color-scheme" content="light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="台語寫字" />
+    <meta
+      name="description"
+      content="編輯會當列印的 A4 台語文書寫練習單，輸出 PDF。"
+    />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
     <title>台語寫字學習單編輯器</title>
     <!-- crossorigin 必須：html2canvas 繪到 canvas 時，跨站字體須為 CORS 模式載入才會用，否則 PDF 會落回備援字型 -->
     <link
@@ -10,7 +26,7 @@
       rel="stylesheet"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="styles.css?v=1.0.11" />
+    <link rel="stylesheet" href="styles.css?v=1.1.0" />
   </head>
   <body>
     <div class="app">
@@ -31,7 +47,27 @@
             設定欲練習的文字、輸出 pdf 檔案了後共印出來練習
           </p>
         </div>
-        <div class="header-actions">
+        <button
+          type="button"
+          id="moreActionsBtn"
+          class="btn-more-actions"
+          aria-label="其他功能"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="headerActions"
+        >
+          <svg
+            class="btn-more-actions-svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
+        </button>
+        <div class="header-actions" id="headerActions">
           <div class="dropdown-wrap header-template-dropdown">
             <button
               type="button"
@@ -80,11 +116,26 @@
           <button type="button" id="exportSettings" class="btn btn-settings">
             匯出設定
           </button>
+          <button
+            type="button"
+            id="installAppBtn"
+            class="btn btn-settings"
+            hidden
+          >
+            安裝
+          </button>
           <button type="button" id="exportPdf" class="btn btn-export">
             輸出 PDF
           </button>
         </div>
       </header>
+
+      <div
+        id="mobileActionsBackdrop"
+        class="mobile-sheet-backdrop"
+        hidden
+      ></div>
+      <div id="settingsBackdrop" class="mobile-sheet-backdrop" hidden></div>
 
       <aside class="sidebar">
         <div class="sidebar-toolbar" role="toolbar" aria-label="側欄工具">
@@ -285,6 +336,19 @@
       </aside>
 
       <main class="main">
+        <div class="mobile-preview-toolbar">
+          <button
+            type="button"
+            id="previewFitToggle"
+            class="btn btn-settings"
+            aria-pressed="true"
+          >
+            適寬
+          </button>
+          <button type="button" id="mobileExportPdf" class="btn btn-export">
+            輸出 PDF
+          </button>
+        </div>
         <div class="preview-wrap">
           <div id="worksheetPreview" class="worksheet-pages"></div>
         </div>
@@ -336,7 +400,9 @@
           </p>
           <h3>功能介紹</h3>
           <ul>
-            <li>佇倒手爿設定學習單的內容，正手爿隨看著排版的結果。</li>
+            <li>
+              佇「編輯」設定學習單的內容，佇「預覽」看排版結果（電腦版是倒手爿編輯、正手爿預覽）。
+            </li>
             <li>字的寸尺、底線樣式、逝距隨在你撨。</li>
             <li>揤「輸出 PDF」通輸出會當印出來練習的檔案。</li>
             <li>
@@ -358,9 +424,15 @@
             <li>
               「字詞見本」通佇仝一逝用「｜」抑是「|」分欄位：一個分兩欄、兩个分三欄
             </li>
+            <li>通安裝到主畫面抑是電腦桌面，像 app 仝款開啟使用。</li>
           </ul>
         </div>
         <div class="info-modal-section">
+          <h3>2026.8.24</h3>
+          <ul>
+            <li>手機介面：編輯／預覽分頁、適寬預覽、項目上下調整</li>
+            <li>支援安裝到主畫面／桌面（PWA）</li>
+          </ul>
           <h3>2026.4.19</h3>
           <ul>
             <li>段落文字：支援 Markdown 的 <code>==螢光筆==</code> 語法</li>
@@ -384,8 +456,99 @@
       </div>
     </div>
 
+    <nav class="mobile-tabbar" aria-label="主要畫面切換">
+      <button
+        type="button"
+        id="tabEdit"
+        class="mobile-tab is-active"
+        aria-current="page"
+      >
+        <svg
+          class="mobile-tab-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+        <span>編輯</span>
+      </button>
+      <button type="button" id="tabPreview" class="mobile-tab">
+        <svg
+          class="mobile-tab-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+          <path d="M14 2v6h6" />
+          <path d="M8 13h8" />
+          <path d="M8 17h5" />
+        </svg>
+        <span>預覽</span>
+      </button>
+    </nav>
+
+    <div class="install-banner" id="installBanner" hidden>
+      <p class="install-banner-text">
+        通安裝到主畫面，像 app 仝款開啟使用
+      </p>
+      <div class="install-banner-actions">
+        <button type="button" id="installBannerBtn" class="btn btn-primary">
+          安裝
+        </button>
+        <button
+          type="button"
+          id="installBannerDismiss"
+          class="btn btn-settings"
+        >
+          閉起來
+        </button>
+      </div>
+    </div>
+
+    <div class="info-modal" id="installHelpModal" hidden>
+      <div class="info-modal-backdrop" data-install-help-close></div>
+      <div
+        class="info-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="installHelpTitle"
+      >
+        <button
+          type="button"
+          id="installHelpClose"
+          class="info-modal-close"
+          aria-label="關閉安裝說明"
+        >
+          ×
+        </button>
+        <h2 id="installHelpTitle">安裝到主畫面</h2>
+        <div class="info-modal-section">
+          <p>iPhone／iPad 請用 Safari 開啟這个網頁，隨後：</p>
+          <ol>
+            <li>揤底部分享鈕（方塊頂面一支箭）。</li>
+            <li>向下搝，選「加到主畫面」。</li>
+            <li>揤「加入」。了後就會當像 app 仝款開啟。</li>
+          </ol>
+          <p>
+            電腦版 Chrome／Edge 通佇網址列正手爿的安裝圖示，抑是選單內底的「安裝應用程式」。
+          </p>
+        </div>
+      </div>
+    </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <script src="app.js?v=1.0.12"></script>
+    <script src="app.js?v=1.1.0"></script>
   </body>
 </html>

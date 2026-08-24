@@ -213,6 +213,22 @@
   const $infoModalClose = document.getElementById("infoModalClose");
   const $undoButton = document.getElementById("undoButton");
   const $redoButton = document.getElementById("redoButton");
+  const $moreActionsBtn = document.getElementById("moreActionsBtn");
+  const $mobileActionsBackdrop = document.getElementById(
+    "mobileActionsBackdrop",
+  );
+  const $settingsBackdrop = document.getElementById("settingsBackdrop");
+  const $tabEdit = document.getElementById("tabEdit");
+  const $tabPreview = document.getElementById("tabPreview");
+  const $previewFitToggle = document.getElementById("previewFitToggle");
+  const $mobileExportPdf = document.getElementById("mobileExportPdf");
+  const $installAppBtn = document.getElementById("installAppBtn");
+  const $installBanner = document.getElementById("installBanner");
+  const $installBannerBtn = document.getElementById("installBannerBtn");
+  const $installBannerDismiss = document.getElementById("installBannerDismiss");
+  const $installHelpModal = document.getElementById("installHelpModal");
+  const $installHelpClose = document.getElementById("installHelpClose");
+  const $previewWrap = document.querySelector(".preview-wrap");
 
   function updateHistoryButtonState() {
     if ($undoButton) {
@@ -727,6 +743,7 @@
     }
 
     $infoButton.addEventListener("click", function () {
+      closeMobileActions();
       if ($infoModal.hidden) {
         openInfoModal();
       } else {
@@ -802,6 +819,50 @@
     state.items.splice(index, 1);
     renderItemList();
     renderPreview();
+  }
+
+  function moveItemByOffset(index, offset) {
+    var toIndex = index + offset;
+    if (index < 0 || toIndex < 0 || toIndex >= state.items.length) return;
+    pushUndoSnapshot();
+    var moved = state.items[index];
+    state.items.splice(index, 1);
+    state.items.splice(toIndex, 0, moved);
+    reorderItemListUpdateFocus(index, toIndex);
+    renderItemList();
+    renderPreview();
+    updatePreviewEditingOutline();
+    scrollPreviewToItem(toIndex);
+  }
+
+  function createMoveButtons(wrap, index, total) {
+    var group = document.createElement("div");
+    group.className = "item-move-btns";
+    var up = document.createElement("button");
+    up.type = "button";
+    up.className = "btn-move-item";
+    up.setAttribute("aria-label", "共這个項目徙去頂面");
+    up.textContent = "↑";
+    up.disabled = index <= 0;
+    up.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveItemByOffset(getBlockIndex(wrap), -1);
+    });
+    var down = document.createElement("button");
+    down.type = "button";
+    down.className = "btn-move-item";
+    down.setAttribute("aria-label", "共這个項目徙去下面");
+    down.textContent = "↓";
+    down.disabled = index >= total - 1;
+    down.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveItemByOffset(getBlockIndex(wrap), 1);
+    });
+    group.appendChild(up);
+    group.appendChild(down);
+    return group;
   }
 
   function setItemField(index, field, value) {
@@ -996,6 +1057,7 @@
         });
         row.appendChild(label);
         row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
         row.appendChild(dragHandle);
         wrap.appendChild(row);
         $itemList.appendChild(wrap);
@@ -1080,6 +1142,7 @@
         });
         row.appendChild(label);
         row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
         row.appendChild(dragHandle);
         wrap.appendChild(row);
 
@@ -1214,6 +1277,7 @@
         textareaRow.appendChild(textarea);
         row.appendChild(label);
         row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
         row.appendChild(dragHandle);
         wrap.appendChild(row);
         wrap.appendChild(textareaRow);
@@ -1314,6 +1378,7 @@
       lcRow.appendChild(lcLabel);
       lcRow.appendChild(lcInput);
       lcRow.appendChild(btn);
+      lcRow.appendChild(createMoveButtons(wrap, i, state.items.length));
       lcRow.appendChild(dragHandle);
       wrap.addEventListener("dragover", function (e) {
         if (e.dataTransfer.types.indexOf("text/plain") === -1) return;
@@ -1552,6 +1617,7 @@
     });
     updatePreviewEditingOutline();
     if ($main) $main.scrollTop = savedScrollTop;
+    updatePreviewScale();
   }
 
   $addItem.addEventListener("click", addItem);
@@ -1583,6 +1649,14 @@
         "aria-expanded",
         isCollapsed ? "false" : "true",
       );
+      if (isCollapsed) {
+        document.body.classList.remove("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+      } else {
+        closeMobileActions();
+        document.body.classList.add("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = false;
+      }
     });
   }
 
@@ -1709,6 +1783,7 @@
           .then(function (data) {
             applyImportedSettings(data);
             closeLoadTemplateMenu();
+            if (isCompactLayout()) setMobilePane("preview");
           })
           .catch(function (err) {
             alert(
@@ -1724,6 +1799,7 @@
     });
     $loadTemplateMenu.hidden = false;
     $loadTemplateBtn.setAttribute("aria-expanded", "true");
+    closeMobileActions();
     var rect = $loadTemplateBtn.getBoundingClientRect();
     $loadTemplateMenu.style.top = rect.bottom + 4 + "px";
     $loadTemplateMenu.style.left = rect.left + "px";
@@ -1772,6 +1848,7 @@
           .then(function (data) {
             applyImportedSettings(data);
             closeLoadTextbookMenu();
+            if (isCompactLayout()) setMobilePane("preview");
           })
           .catch(function (err) {
             alert(
@@ -1787,6 +1864,7 @@
     });
     $loadTextbookMenu.hidden = false;
     $loadTextbookBtn.setAttribute("aria-expanded", "true");
+    closeMobileActions();
     var rect = $loadTextbookBtn.getBoundingClientRect();
     $loadTextbookMenu.style.top = rect.bottom + 4 + "px";
     $loadTextbookMenu.style.left = rect.left + "px";
@@ -2011,6 +2089,7 @@
 
   if ($importSettings && $importSettingsFile) {
     $importSettings.addEventListener("click", function () {
+      closeMobileActions();
       $importSettingsFile.value = "";
       $importSettingsFile.click();
     });
@@ -2022,6 +2101,7 @@
         try {
           var data = JSON.parse(reader.result);
           applyImportedSettings(data);
+          if (isCompactLayout()) setMobilePane("preview");
         } catch (e) {
           alert("無法解析設定檔，請確認是有效的 JSON 格式。");
         }
@@ -2030,10 +2110,14 @@
     });
   }
   if ($exportSettings) {
-    $exportSettings.addEventListener("click", exportSettingsToJson);
+    $exportSettings.addEventListener("click", function () {
+      closeMobileActions();
+      exportSettingsToJson();
+    });
   }
 
   $exportPdf.addEventListener("click", function () {
+    closeMobileActions();
     var pageEls = $worksheetPreview.querySelectorAll(".worksheet-page");
     var pageArray = Array.prototype.slice.call(pageEls);
     if (pageArray.length === 0) return;
@@ -2208,6 +2292,306 @@
         : Promise.resolve();
     fontsReady.then(runPdfExport).catch(runPdfExport);
   });
+
+  var COMPACT_MQ = "(max-width: 900px)";
+  var previewFitWidth = true;
+  var deferredInstallPrompt = null;
+  var INSTALL_BANNER_KEY = "tai-gi-worksheet-install-banner-dismissed";
+
+  function isCompactLayout() {
+    return window.matchMedia(COMPACT_MQ).matches;
+  }
+
+  function closeSettingsSheet() {
+    if ($settingsPanel) $settingsPanel.classList.add("is-collapsed");
+    if ($settingsToggle) $settingsToggle.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("mobile-settings-open");
+    if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+  }
+
+  function closeMobileActions() {
+    document.body.classList.remove("mobile-actions-open");
+    if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "false");
+    if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = true;
+  }
+
+  function openMobileActions() {
+    closeSettingsSheet();
+    closeInsertMenu();
+    closeLoadTemplateMenu();
+    closeLoadTextbookMenu();
+    hideInstallBanner();
+    document.body.classList.add("mobile-actions-open");
+    if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "true");
+    if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = false;
+  }
+
+  function updatePreviewScale() {
+    var wrap = $previewWrap;
+    var pages = $worksheetPreview;
+    if (!wrap || !pages) return;
+    var shouldFit = isCompactLayout() && previewFitWidth;
+    if (!shouldFit) {
+      pages.style.transform = "";
+      wrap.style.width = "";
+      wrap.style.height = "";
+      wrap.classList.remove("is-scaled");
+      return;
+    }
+    var page = pages.querySelector(".worksheet-page");
+    if (!page) return;
+    var naturalW = page.offsetWidth;
+    var naturalH = pages.scrollHeight;
+    if (!naturalW || !naturalH) return;
+    var availW = ($main ? $main.clientWidth : window.innerWidth) - 8;
+    if (availW < 80) availW = window.innerWidth - 24;
+    var scale = availW / naturalW;
+    if (scale > 1) scale = 1;
+    if (scale < 0.12) scale = 0.12;
+    pages.style.transformOrigin = "top left";
+    pages.style.transform = "scale(" + scale + ")";
+    wrap.style.width = naturalW * scale + "px";
+    wrap.style.height = naturalH * scale + "px";
+    wrap.classList.add("is-scaled");
+  }
+
+  function setMobilePane(pane) {
+    var isPreview = pane === "preview";
+    document.body.classList.toggle("mobile-pane-preview", isPreview);
+    document.body.classList.toggle("mobile-pane-edit", !isPreview);
+    if ($tabEdit) {
+      $tabEdit.classList.toggle("is-active", !isPreview);
+      if (!isPreview) $tabEdit.setAttribute("aria-current", "page");
+      else $tabEdit.removeAttribute("aria-current");
+    }
+    if ($tabPreview) {
+      $tabPreview.classList.toggle("is-active", isPreview);
+      if (isPreview) $tabPreview.setAttribute("aria-current", "page");
+      else $tabPreview.removeAttribute("aria-current");
+    }
+    closeMobileActions();
+    closeSettingsSheet();
+    closeInsertMenu();
+    closeLoadTemplateMenu();
+    closeLoadTextbookMenu();
+    if (isPreview) {
+      requestAnimationFrame(function () {
+        updatePreviewScale();
+      });
+    }
+  }
+
+  function syncFitToggleLabel() {
+    if (!$previewFitToggle) return;
+    $previewFitToggle.setAttribute(
+      "aria-pressed",
+      previewFitWidth ? "true" : "false",
+    );
+    $previewFitToggle.textContent = previewFitWidth ? "適寬" : "原寸";
+  }
+
+  function isStandaloneDisplay() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function isIosDevice() {
+    return (
+      /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    );
+  }
+
+  function hideInstallBanner() {
+    if ($installBanner) $installBanner.hidden = true;
+  }
+
+  function updateInstallButtonVisibility() {
+    var standalone = isStandaloneDisplay();
+    var canPrompt = !!deferredInstallPrompt;
+    var show = !standalone && (canPrompt || isIosDevice() || isCompactLayout());
+    if ($installAppBtn) $installAppBtn.hidden = !show;
+    if (standalone) hideInstallBanner();
+  }
+
+  function openInstallHelp() {
+    if (!$installHelpModal) return;
+    $installHelpModal.hidden = false;
+    document.body.classList.add("is-modal-open");
+  }
+
+  function closeInstallHelp() {
+    if (!$installHelpModal) return;
+    $installHelpModal.hidden = true;
+    if (
+      $infoModal &&
+      $infoModal.hidden &&
+      !document.body.classList.contains("mobile-actions-open")
+    ) {
+      document.body.classList.remove("is-modal-open");
+    }
+  }
+
+  function promptInstall() {
+    closeMobileActions();
+    if (deferredInstallPrompt && typeof deferredInstallPrompt.prompt === "function") {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function () {
+        deferredInstallPrompt = null;
+        updateInstallButtonVisibility();
+        hideInstallBanner();
+      });
+      return;
+    }
+    openInstallHelp();
+  }
+
+  if ($moreActionsBtn) {
+    $moreActionsBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (document.body.classList.contains("mobile-actions-open")) {
+        closeMobileActions();
+      } else {
+        openMobileActions();
+      }
+    });
+  }
+  if ($mobileActionsBackdrop) {
+    $mobileActionsBackdrop.addEventListener("click", closeMobileActions);
+  }
+  if ($settingsBackdrop) {
+    $settingsBackdrop.addEventListener("click", closeSettingsSheet);
+  }
+  if ($tabEdit) {
+    $tabEdit.addEventListener("click", function () {
+      setMobilePane("edit");
+    });
+  }
+  if ($tabPreview) {
+    $tabPreview.addEventListener("click", function () {
+      setMobilePane("preview");
+    });
+  }
+  if ($previewFitToggle) {
+    syncFitToggleLabel();
+    $previewFitToggle.addEventListener("click", function () {
+      previewFitWidth = !previewFitWidth;
+      syncFitToggleLabel();
+      updatePreviewScale();
+    });
+  }
+  if ($mobileExportPdf && $exportPdf) {
+    $mobileExportPdf.addEventListener("click", function () {
+      $exportPdf.click();
+    });
+  }
+
+  if ($installAppBtn) {
+    $installAppBtn.addEventListener("click", promptInstall);
+  }
+  if ($installBannerBtn) {
+    $installBannerBtn.addEventListener("click", promptInstall);
+  }
+  if ($installBannerDismiss) {
+    $installBannerDismiss.addEventListener("click", function () {
+      try {
+        localStorage.setItem(INSTALL_BANNER_KEY, "1");
+      } catch (e) {}
+      hideInstallBanner();
+    });
+  }
+  if ($installHelpClose) {
+    $installHelpClose.addEventListener("click", closeInstallHelp);
+  }
+  if ($installHelpModal) {
+    var installHelpBackdrop = $installHelpModal.querySelector(
+      "[data-install-help-close]",
+    );
+    if (installHelpBackdrop) {
+      installHelpBackdrop.addEventListener("click", closeInstallHelp);
+    }
+  }
+
+  window.addEventListener("beforeinstallprompt", function (evt) {
+    evt.preventDefault();
+    deferredInstallPrompt = evt;
+    updateInstallButtonVisibility();
+    var dismissed = false;
+    try {
+      dismissed = localStorage.getItem(INSTALL_BANNER_KEY) === "1";
+    } catch (e) {}
+    if (
+      !dismissed &&
+      !isStandaloneDisplay() &&
+      isCompactLayout() &&
+      $installBanner
+    ) {
+      $installBanner.hidden = false;
+    }
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferredInstallPrompt = null;
+    hideInstallBanner();
+    updateInstallButtonVisibility();
+  });
+
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key !== "Escape") return;
+    if ($installHelpModal && !$installHelpModal.hidden) {
+      evt.preventDefault();
+      closeInstallHelp();
+      return;
+    }
+    if (document.body.classList.contains("mobile-actions-open")) {
+      evt.preventDefault();
+      closeMobileActions();
+      return;
+    }
+    if (document.body.classList.contains("mobile-settings-open")) {
+      evt.preventDefault();
+      closeSettingsSheet();
+    }
+  });
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (!isCompactLayout()) {
+        closeMobileActions();
+        document.body.classList.remove("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+      }
+      updatePreviewScale();
+      updateInstallButtonVisibility();
+    }, 80);
+  });
+
+  setMobilePane("edit");
+  updateInstallButtonVisibility();
+
+  if (!isStandaloneDisplay() && isIosDevice() && isCompactLayout()) {
+    var iosDismissed = false;
+    try {
+      iosDismissed = localStorage.getItem(INSTALL_BANNER_KEY) === "1";
+    } catch (e) {}
+    if (!iosDismissed && $installBanner) {
+      window.setTimeout(function () {
+        if (!isStandaloneDisplay()) $installBanner.hidden = false;
+      }, 2500);
+    }
+  }
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      if (location.protocol !== "http:" && location.protocol !== "https:")
+        return;
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
 
   /** 沒有 LocalStorage 時改載入 intro 範例（操作介紹）；完成後才開始定期存檔，避免先寫入預設空白狀態 */
   function finishInitialLoad() {
