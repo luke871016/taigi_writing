@@ -137,10 +137,16 @@ a {
 .btn-more-actions,
 .mobile-tabbar,
 .mobile-preview-toolbar,
+.mobile-preview-hint,
 .mobile-sheet-backdrop,
 .install-banner,
-.item-move-btns {
+.item-move-btns,
+.mobile-menu-sub {
   display: none;
+}
+
+.mobile-menu-root {
+  display: contents;
 }
 
 .header .btn-settings,
@@ -960,6 +966,15 @@ a {
   overflow: visible;
 }
 
+.preview-viewport,
+.preview-stage {
+  display: contents;
+}
+
+.mobile-preview-hint {
+  display: none;
+}
+
 /* 多頁 A4 預覽：每頁分開顯示，不裁切後續頁 */
 .worksheet-pages {
   display: flex;
@@ -1228,6 +1243,7 @@ a {
   .slider-group,
   .mobile-tabbar,
   .mobile-preview-toolbar,
+  .mobile-preview-hint,
   .mobile-sheet-backdrop,
   .install-banner,
   .btn-more-actions {
@@ -1346,6 +1362,57 @@ a {
     height: 1.35rem;
   }
 
+  .hamburger {
+    position: relative;
+    display: block;
+    width: 1.2rem;
+    height: 0.85rem;
+  }
+
+  .hamburger span {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: currentColor;
+    border-radius: 1px;
+    transition:
+      transform 0.2s ease,
+      opacity 0.2s ease,
+      top 0.2s ease,
+      bottom 0.2s ease;
+  }
+
+  .hamburger span:nth-child(1) {
+    top: 0;
+  }
+
+  .hamburger span:nth-child(2) {
+    top: 50%;
+    margin-top: -1px;
+  }
+
+  .hamburger span:nth-child(3) {
+    bottom: 0;
+  }
+
+  .btn-more-actions[aria-expanded="true"] .hamburger span:nth-child(1) {
+    top: 50%;
+    margin-top: -1px;
+    transform: rotate(45deg);
+  }
+
+  .btn-more-actions[aria-expanded="true"] .hamburger span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .btn-more-actions[aria-expanded="true"] .hamburger span:nth-child(3) {
+    top: 50%;
+    bottom: auto;
+    margin-top: -1px;
+    transform: rotate(-45deg);
+  }
+
   .btn-more-actions:hover,
   .btn-more-actions[aria-expanded="true"] {
     background: var(--bg);
@@ -1374,6 +1441,90 @@ a {
 
   body.mobile-actions-open .header-actions {
     display: flex;
+  }
+
+  .mobile-menu-root {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
+    width: 100%;
+  }
+
+  .header-actions.is-subview .mobile-menu-root {
+    display: none;
+  }
+
+  .mobile-menu-sub {
+    display: none;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.35rem;
+    width: 100%;
+  }
+
+  .header-actions.is-subview-templates #mobileMenuTemplates,
+  .header-actions.is-subview-textbooks #mobileMenuTextbooks {
+    display: flex;
+  }
+
+  .mobile-menu-back,
+  .mobile-menu-list button {
+    width: 100%;
+    min-height: 2.75rem;
+    padding: 0.7rem 1rem;
+    font-family: inherit;
+    font-size: 1rem;
+    text-align: left;
+    color: var(--ink);
+    background: var(--paper);
+    border: 1px solid var(--line-light);
+    border-radius: 8px;
+    cursor: pointer;
+  }
+
+  .mobile-menu-back {
+    color: var(--accent);
+  }
+
+  .mobile-menu-back:hover,
+  .mobile-menu-list button:hover {
+    background: var(--bg);
+    border-color: var(--accent);
+  }
+
+  .mobile-menu-sub-title {
+    margin: 0.15rem 0 0.25rem;
+    font-size: 0.85rem;
+    color: #666;
+  }
+
+  .mobile-menu-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+  }
+
+  .header-template-dropdown .btn-settings,
+  .header-textbook-dropdown .btn-settings {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .header-template-dropdown .btn-settings::after,
+  .header-textbook-dropdown .btn-settings::after {
+    content: "";
+    width: 0.45rem;
+    height: 0.45rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(-45deg);
+    margin-left: 0.5rem;
+    flex-shrink: 0;
   }
 
   .header .btn-settings,
@@ -1441,6 +1592,8 @@ a {
     visibility: visible;
     pointer-events: auto;
     z-index: 10;
+    padding: 0;
+    overflow: hidden;
   }
 
   body.mobile-pane-preview .sidebar {
@@ -1591,14 +1744,34 @@ a {
     z-index: 3;
     width: 100%;
     max-width: none;
-    margin: 0 0 0.75rem;
+    margin: 0;
+    padding: 0.65rem 0.75rem 0.4rem;
     gap: 0.5rem;
     align-items: stretch;
     flex-shrink: 0;
+    background: var(--bg);
+    box-sizing: border-box;
   }
 
   body.mobile-pane-preview .mobile-preview-toolbar {
     display: flex;
+  }
+
+  .mobile-preview-hint {
+    display: none;
+    margin: 0;
+    padding: 0 0.75rem 0.45rem;
+    font-size: 0.8rem;
+    color: #777;
+    text-align: center;
+    flex-shrink: 0;
+    background: var(--bg);
+    width: 100%;
+    box-sizing: border-box;
+  }
+
+  body.mobile-pane-preview .mobile-preview-hint {
+    display: block;
   }
 
   .mobile-preview-toolbar .btn {
@@ -1611,8 +1784,34 @@ a {
     padding: 0.6rem 1rem;
   }
 
-  .preview-wrap.is-scaled {
+  .preview-viewport {
+    display: block;
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
     overflow: hidden;
+    touch-action: none;
+    background: var(--bg);
+    cursor: grab;
+  }
+
+  .preview-viewport:active {
+    cursor: grabbing;
+  }
+
+  .preview-stage {
+    display: block;
+    width: max-content;
+    transform-origin: 0 0;
+    will-change: transform;
+  }
+
+  .preview-stage .worksheet-pages {
+    align-items: flex-start;
+  }
+
+  .preview-wrap.is-scaled {
+    overflow: visible;
   }
 
   .install-banner {
