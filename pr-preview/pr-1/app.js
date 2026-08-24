@@ -1,0 +1,2647 @@
+/**
+ * 台語字練習簿 Worksheet 產生器
+ * 所見即所得編輯、可輸出 A4 PDF
+ */
+
+(function () {
+  var nextItemId = 1;
+
+  /** 段落 Markdown：支援 ==文字== 轉成 <mark>（螢光筆）；只註冊一次，避免重複 marked.use */
+  var markedMarkExtensionInstalled = false;
+  function ensureMarkedMarkExtension() {
+    if (markedMarkExtensionInstalled || typeof marked === "undefined") return;
+    marked.use({
+      extensions: [
+        {
+          name: "mark",
+          level: "inline",
+          start: function (src) {
+            var i = src.indexOf("==");
+            return i === -1 ? undefined : i;
+          },
+          tokenizer: function (src, tokens) {
+            var rule = /^==([\s\S]+?)==/;
+            var match = rule.exec(src);
+            if (!match) return;
+            var inner = match[1];
+            var token = {
+              type: "mark",
+              raw: match[0],
+              tokens: [],
+            };
+            this.lexer.inlineTokens(inner, token.tokens);
+            return token;
+          },
+          renderer: function (token) {
+            return (
+              '<mark class="md-mark">' +
+              this.parser.parseInline(token.tokens) +
+              "</mark>"
+            );
+          },
+        },
+      ],
+    });
+    markedMarkExtensionInstalled = true;
+  }
+
+  /** 段落文字內容轉 HTML；無 marked 抑是空白時回傳 null（由呼叫端用 textContent） */
+  function paragraphMarkdownToHtml(raw) {
+    var s = typeof raw === "string" ? raw : "";
+    if (!s.trim()) return null;
+    if (typeof marked === "undefined") return null;
+    ensureMarkedMarkExtension();
+    return marked.parse(s);
+  }
+
+  function ensureItemId(item) {
+    if (!item.id) {
+      item.id = "item-" + String(nextItemId++);
+    }
+    return item;
+  }
+  function ensureAllItemIds() {
+    state.items.forEach(ensureItemId);
+  }
+
+  /**
+   * 教材／匯入 JSON 可能重複使用相同 id，blocksById 會蓋掉前一格，拖曳後左欄無法重排。
+   * 強制每個項目 id 唯一，並拉高 nextItemId 避免新項目撞 id。
+   */
+  function ensureUniqueItemIds() {
+    var used = Object.create(null);
+    state.items.forEach(function (item) {
+      var id = item.id != null ? String(item.id).trim() : "";
+      if (id && !used[id]) {
+        used[id] = true;
+        item.id = id;
+      } else {
+        while (true) {
+          var nid = "item-" + String(nextItemId++);
+          if (!used[nid]) {
+            item.id = nid;
+            used[nid] = true;
+            break;
+          }
+        }
+      }
+    });
+    var max = 0;
+    state.items.forEach(function (item) {
+      var m = /^item-(\d+)$/.exec(String(item.id));
+      if (m) {
+        var n = parseInt(m[1], 10);
+        if (!isNaN(n) && n > max) max = n;
+      }
+    });
+    if (nextItemId <= max) nextItemId = max + 1;
+  }
+
+  const state = {
+    items: [
+      { description: "台語", exampleText: "台語 Tâi-gí", lineCount: 1 },
+      { description: "寫字", exampleText: "寫字 Siá-jī", lineCount: 1 },
+      { description: "練習", exampleText: "練習 Liān-si̍p", lineCount: 1 },
+      { description: "筆記", exampleText: "", lineCount: 15 },
+    ],
+    lineStyle: "single",
+    lineSpacingDelta: 0,
+    fontSize: 24,
+    pageHeader: "",
+    focusedItemIndex: null,
+    showPageNumbers: false,
+    autoItemNumbers: false,
+  };
+  ensureAllItemIds();
+  ensureUniqueItemIds();
+  var undoStack = [];
+  var redoStack = [];
+  var isApplyingHistory = false;
+
+  function cloneItems(items) {
+    return items.map(function (item) {
+      return Object.assign({}, item);
+    });
+  }
+
+  function getSnapshot() {
+    return {
+      items: cloneItems(state.items),
+      lineStyle: state.lineStyle,
+      lineSpacingDelta: state.lineSpacingDelta,
+      fontSize: state.fontSize,
+      pageHeader: state.pageHeader,
+      focusedItemIndex: state.focusedItemIndex,
+      showPageNumbers: !!state.showPageNumbers,
+      autoItemNumbers: !!state.autoItemNumbers,
+    };
+  }
+
+  function snapshotsEqual(a, b) {
+    if (!a || !b) return false;
+    return JSON.stringify(a) === JSON.stringify(b);
+  }
+
+  /** 依目前字級計算單行行高（與字級成比例，比例同預設 24px -> 40px） */
+  function getLineHeightPx() {
+    return Math.round((state.fontSize * 40) / 24);
+  }
+
+  /** 取得目前字型 1ex 的 px 值（x-height），用於行距預設 */
+  function getExPx() {
+    var span = document.createElement("span");
+    span.style.cssText =
+      "position:absolute;left:-9999px;font-family:'Iansui',sans-serif;font-size:" +
+      state.fontSize +
+      "px;line-height:1;visibility:hidden;";
+    span.textContent = "x";
+    document.body.appendChild(span);
+    var h = span.offsetHeight;
+    document.body.removeChild(span);
+    return h;
+  }
+
+  /**
+   * 期望的視覺間距（px）：「這組底線」到「下一組頂線」= 1ex + delta×lineHeight（delta 為 -0.2～+0.2，不小於 0）
+   */
+  function getDesiredGapPx() {
+    var ex = getExPx();
+    var lh = getLineHeightPx();
+    return Math.max(0, ex + state.lineSpacingDelta * lh);
+  }
+
+  /**
+   * 計算 --line-spacing（margin-top px）。
+   * 期望視覺間距 desired = 1ex + delta×0.2×lineHeight；換算成 margin 時要加上比例修正，
+   * 使 24px、行距 0 時約為 -15px，並依字級縮放。
+   */
+  function getLineSpacingPx() {
+    var desired = getDesiredGapPx();
+    var ex = getExPx();
+    var correctionPx = 15 * (state.fontSize / 24);
+    return Math.round(desired - ex - correctionPx);
+  }
+
+  const $itemList = document.getElementById("itemList");
+  const $addItem = document.getElementById("addItem");
+  const $insertMenuToggle = document.getElementById("insertMenuToggle");
+  const $insertMenu = document.getElementById("insertMenu");
+  const $insertPageBreak = document.getElementById("insertPageBreak");
+  const $insertCustomImage = document.getElementById("insertCustomImage");
+  const $insertContent = document.getElementById("insertContent");
+  const $exportPdf = document.getElementById("exportPdf");
+  const $loadTemplateBtn = document.getElementById("loadTemplateBtn");
+  const $loadTemplateMenu = document.getElementById("loadTemplateMenu");
+  const $loadTextbookBtn = document.getElementById("loadTextbookBtn");
+  const $loadTextbookMenu = document.getElementById("loadTextbookMenu");
+  const $importSettings = document.getElementById("importSettings");
+  const $importSettingsFile = document.getElementById("importSettingsFile");
+  const $exportSettings = document.getElementById("exportSettings");
+  const $worksheetPreview = document.getElementById("worksheetPreview");
+  const $main = document.querySelector(".main");
+  const $fontSize = document.getElementById("fontSize");
+  const $fontSizeValue = document.getElementById("fontSizeValue");
+  const $lineSpacing = document.getElementById("lineSpacing");
+  const $lineSpacingValue = document.getElementById("lineSpacingValue");
+  const $settingsToggle = document.getElementById("settingsToggle");
+  const $settingsPanel = document.getElementById("settingsPanel");
+  const $pageHeader = document.getElementById("pageHeader");
+  const $showPageNumbers = document.getElementById("showPageNumbers");
+  const $autoItemNumbers = document.getElementById("autoItemNumbers");
+  const $infoButton = document.getElementById("infoButton");
+  const $infoModal = document.getElementById("infoModal");
+  const $infoModalClose = document.getElementById("infoModalClose");
+  const $undoButton = document.getElementById("undoButton");
+  const $redoButton = document.getElementById("redoButton");
+  const $moreActionsBtn = document.getElementById("moreActionsBtn");
+  const $mobileActionsBackdrop = document.getElementById(
+    "mobileActionsBackdrop",
+  );
+  const $settingsBackdrop = document.getElementById("settingsBackdrop");
+  const $tabEdit = document.getElementById("tabEdit");
+  const $tabPreview = document.getElementById("tabPreview");
+  const $previewFitToggle = document.getElementById("previewFitToggle");
+  const $mobileExportPdf = document.getElementById("mobileExportPdf");
+  const $installAppBtn = document.getElementById("installAppBtn");
+  const $installBanner = document.getElementById("installBanner");
+  const $installBannerBtn = document.getElementById("installBannerBtn");
+  const $installBannerDismiss = document.getElementById("installBannerDismiss");
+  const $installHelpModal = document.getElementById("installHelpModal");
+  const $installHelpClose = document.getElementById("installHelpClose");
+  const $previewWrap = document.querySelector(".preview-wrap");
+
+  function updateHistoryButtonState() {
+    if ($undoButton) {
+      $undoButton.disabled = undoStack.length === 0;
+      $undoButton.title =
+        undoStack.length === 0 ? "目前無可撤銷的動作" : "撤銷上一個編輯動作";
+    }
+    if ($redoButton) {
+      $redoButton.disabled = redoStack.length === 0;
+      $redoButton.title =
+        redoStack.length === 0 ? "目前無可重做的動作" : "重做上一個撤銷動作";
+    }
+  }
+
+  function pushUndoSnapshot() {
+    if (isApplyingHistory) return;
+    var snapshot = getSnapshot();
+    if (
+      undoStack.length > 0 &&
+      snapshotsEqual(undoStack[undoStack.length - 1], snapshot)
+    ) {
+      return;
+    }
+    undoStack.push(snapshot);
+    if (undoStack.length > 300) undoStack.shift();
+    redoStack = [];
+    updateHistoryButtonState();
+  }
+
+  function applySnapshot(snapshot) {
+    if (!snapshot) return;
+    state.items = cloneItems(snapshot.items || []);
+    ensureAllItemIds();
+    ensureUniqueItemIds();
+    state.lineStyle = snapshot.lineStyle === "triple" ? "triple" : "single";
+    state.lineSpacingDelta = Number(snapshot.lineSpacingDelta) || 0;
+    state.fontSize = Math.max(
+      16,
+      Math.min(40, Number(snapshot.fontSize) || 24),
+    );
+    state.pageHeader = String(snapshot.pageHeader || "");
+    state.focusedItemIndex =
+      typeof snapshot.focusedItemIndex === "number"
+        ? snapshot.focusedItemIndex
+        : null;
+    state.showPageNumbers = snapshot.showPageNumbers === true;
+    state.autoItemNumbers = snapshot.autoItemNumbers === true;
+
+    if ($fontSize) $fontSize.value = state.fontSize;
+    if ($fontSizeValue) $fontSizeValue.textContent = state.fontSize + "px";
+    if ($lineSpacing)
+      $lineSpacing.value = Math.round(state.lineSpacingDelta * 100);
+    if ($lineSpacingValue) {
+      var spacingText = state.lineSpacingDelta.toFixed(2);
+      $lineSpacingValue.textContent =
+        (state.lineSpacingDelta > 0 ? "+" : "") + spacingText;
+    }
+    if ($pageHeader) $pageHeader.value = state.pageHeader;
+    document
+      .querySelectorAll('input[name="lineStyle"]')
+      .forEach(function (radio) {
+        radio.checked = radio.value === state.lineStyle;
+      });
+
+    if ($showPageNumbers) $showPageNumbers.checked = state.showPageNumbers;
+    if ($autoItemNumbers) $autoItemNumbers.checked = state.autoItemNumbers;
+
+    applyPreviewVars();
+    renderItemList();
+    renderPreview();
+  }
+
+  /** 瀏覽器 LocalStorage：自動儲存編輯進度 */
+  var LOCAL_STORAGE_KEY = "tai-gi-worksheet-editor-progress-v1";
+  var lastPersistedJson = "";
+
+  function persistProgressIfChanged() {
+    try {
+      var json = JSON.stringify(getSnapshot());
+      if (json === lastPersistedJson) return;
+      localStorage.setItem(LOCAL_STORAGE_KEY, json);
+      lastPersistedJson = json;
+    } catch (e) {
+      /* 配額、隱私模式等略過 */
+    }
+  }
+
+  function loadProgressFromLocalStorage() {
+    try {
+      var raw = localStorage.getItem(LOCAL_STORAGE_KEY);
+      if (!raw) return false;
+      var data = JSON.parse(raw);
+      if (!data || typeof data !== "object") return false;
+      if (!Array.isArray(data.items)) return false;
+      isApplyingHistory = true;
+      applySnapshot(data);
+      isApplyingHistory = false;
+      return true;
+    } catch (e) {
+      isApplyingHistory = false;
+      return false;
+    }
+  }
+
+  function undoLastEdit() {
+    if (undoStack.length === 0) return;
+    var snapshot = undoStack.pop();
+    redoStack.push(getSnapshot());
+    if (redoStack.length > 300) redoStack.shift();
+    isApplyingHistory = true;
+    applySnapshot(snapshot);
+    isApplyingHistory = false;
+    updateHistoryButtonState();
+  }
+
+  function redoLastEdit() {
+    if (redoStack.length === 0) return;
+    var snapshot = redoStack.pop();
+    undoStack.push(getSnapshot());
+    if (undoStack.length > 300) undoStack.shift();
+    isApplyingHistory = true;
+    applySnapshot(snapshot);
+    isApplyingHistory = false;
+    updateHistoryButtonState();
+  }
+
+  /** 全形「｜」U+FF5C（佮半形 | U+007C 攏會當做分欄） */
+  var EXAMPLE_COLUMN_SEP = "\uFF5C";
+
+  /**
+   * 將一行見本依半形 | 抑全形 ｜ 切成最多三欄（兩邊空白會 trim）；
+   * 超過兩個分隔符時，剩餘併入第三欄。
+   */
+  function splitExampleLineByBar(line) {
+    var parts = line.split(/\u007C|\uFF5C/);
+    parts = parts.map(function (p) {
+      return p.replace(/^\s+|\s+$/g, "");
+    });
+    if (parts.length <= 3) return parts;
+    return [parts[0], parts[1], parts.slice(2).join(EXAMPLE_COLUMN_SEP)];
+  }
+
+  /**
+   * 將範本字依 Enter 分行，最多 lineCount 行，超出部分丟棄（不顯示）。
+   * 無程式換行：超過欄寬由 CSS overflow 裁切。
+   * 同一行內可用「｜」抑「|」分欄：一個＝兩欄、兩個＝三欄。
+   */
+  function buildExampleLinesForItem(exampleText, lineCount) {
+    var n = Math.max(1, lineCount);
+    var wrapped = [];
+    var paragraphs = String(exampleText != null ? exampleText : "").split(
+      /\r?\n/,
+    );
+    for (var p = 0; p < paragraphs.length; p++) {
+      var para = paragraphs[p];
+      if (para === "") {
+        wrapped.push([""]);
+        continue;
+      }
+      wrapped.push(splitExampleLineByBar(para));
+    }
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      out.push(i < wrapped.length ? wrapped[i] : [""]);
+    }
+    return out;
+  }
+
+  /** 將練習項目展開為一維「顯示條目」陣列：一般行、分頁標記、圖片。供分頁與預覽使用 */
+  function getFlatEntries() {
+    var flat = [];
+    state.items.forEach(function (item, itemIndex) {
+      if (item.type === "pageBreak") {
+        flat.push({ pageBreak: true });
+        return;
+      }
+      if (item.type === "image") {
+        var url = item.imageUrl || item.imagePath;
+        if (url) {
+          var h = Number(item.imageHeightMm);
+          var heightMm = isFinite(h) && h > 0 ? h : undefined;
+          flat.push({
+            image: String(url),
+            imageHeightMm: heightMm,
+            itemIndex: itemIndex,
+          });
+          return;
+        }
+      }
+      if (item.type === "content") {
+        flat.push({
+          content: typeof item.content === "string" ? item.content : "",
+          itemIndex: itemIndex,
+        });
+        return;
+      }
+      var n = Math.max(1, parseInt(item.lineCount, 10) || 1);
+      var exampleLines = buildExampleLinesForItem(item.exampleText, n);
+      for (var i = 0; i < n; i++) {
+        flat.push({
+          exampleColumns: exampleLines[i] || [""],
+          descriptionAbove: i === 0 ? item.description || null : null,
+          itemFirstLine: i === 0,
+          itemIndex: itemIndex,
+        });
+      }
+    });
+    return flat;
+  }
+
+  /** 僅一般練習行（無 type 抑非 image／content／pageBreak）逐項編號（1 起算），key 為 state.items 的索引 */
+  function buildItemOrderByIndex() {
+    var map = {};
+    var n = 0;
+    state.items.forEach(function (item, idx) {
+      if (
+        item.type === "pageBreak" ||
+        item.type === "image" ||
+        item.type === "content"
+      )
+        return;
+      n++;
+      map[idx] = n;
+    });
+    return map;
+  }
+
+  /** 取得單頁內容區高度 257mm 在畫面上的 px 值；異常時用合理 fallback 避免只出一頁 */
+  function getContentHeightPx() {
+    var ruler = document.createElement("div");
+    ruler.style.cssText =
+      "position:absolute;left:-9999px;width:210mm;height:257mm;visibility:hidden;";
+    document.body.appendChild(ruler);
+    var h = ruler.offsetHeight;
+    document.body.removeChild(ruler);
+    if (!h || h < 100) h = 900;
+    if (h > 2500) h = 1200;
+    return h;
+  }
+
+  /** 插入圖片區塊在預覽/分頁時佔用的高度（含上下 margin，與單頁內容區 257mm 同比例） */
+  function getImageBlockHeightPx(imageHeightMm) {
+    var contentH = getContentHeightPx();
+    var mm = Number(imageHeightMm);
+    // 舊版資料可能沒有 imageHeightMm：沿用原本的「固定預留高度」行為
+    // 避免舊圖載入後分頁高度大量改變。
+    if (!isFinite(mm) || mm <= 0) {
+      return Math.round((100 / 257) * contentH);
+    }
+    var imgH = Math.round((mm / 257) * contentH);
+    // .preview-image-block img 上下各 0.5em（父層字級=state.fontSize），合計 1em
+    var marginPx = Math.round(state.fontSize);
+    return imgH + marginPx;
+  }
+
+  // cache: key = `${fontSizePx}|${rawContent}`
+  // 段落文字高度會隨字級（font-size）而變；用快取避免拖曳/調參時重複 parse+量測
+  var contentBlockHeightCache = Object.create(null);
+
+  /** 內文區塊高度：用實際渲染高度取代「依 \\n 次數粗估」 */
+  function getContentBlockHeightPx(contentText) {
+    var raw = typeof contentText === "string" ? contentText : "";
+    var cacheKey = String(state.fontSize) + "|" + raw;
+    if (contentBlockHeightCache[cacheKey]) {
+      return contentBlockHeightCache[cacheKey];
+    }
+
+    // 用真實 DOM 高度取代「用 \\n 次數粗估」，
+    // 因 Markdown/段落軟換行會把很多換行吃掉，造成高度高估而提早換頁。
+    var measureWrap = null;
+    try {
+      // 內文可用寬度 = 210mm - 18mm*2 = 174mm（對齊 .worksheet-page padding）
+      measureWrap = document.createElement("div");
+      measureWrap.style.cssText =
+        "position:absolute;left:-99999px;top:-99999px;width:174mm;visibility:hidden;pointer-events:none;";
+      // .preview-content-block 用 em/0.65em 計算高度，所以要把父層字級對齊到目前字級
+      measureWrap.style.fontSize = state.fontSize + "px";
+
+      var group = document.createElement("div");
+      group.className = "preview-item-group";
+
+      var contentWrap = document.createElement("div");
+      contentWrap.className = "preview-content-block";
+
+      var mdHtml = paragraphMarkdownToHtml(raw);
+      if (mdHtml != null) {
+        contentWrap.innerHTML = mdHtml;
+      } else {
+        contentWrap.textContent = raw || "\u00A0";
+      }
+
+      group.appendChild(contentWrap);
+      measureWrap.appendChild(group);
+      $worksheetPreview.appendChild(measureWrap);
+
+      var h = measureWrap.offsetHeight;
+      if (!h || h < 10) h = getLineHeightPx() * 3;
+      // 偏保守：不要讓偶發量測誤差大到失控（最多當作內容區 60%）
+      // 仍保留上限，避免單一段落造成分頁計算爆量。
+      var contentH = getContentHeightPx();
+      h = Math.min(h, contentH * 0.6);
+
+      contentBlockHeightCache[cacheKey] = h;
+      return h;
+    } catch (e) {
+      // fallback：回到舊的粗估邏輯（在 marked 失效等狀況時）
+      var text = raw;
+      var lines = text ? (text.match(/\n/g) || []).length + 1 : 1;
+      var lh = getLineHeightPx();
+      var minH = lh * 3;
+      var estimated = Math.ceil(lines * lh * 1.25);
+      return Math.max(minH, Math.min(estimated, getContentHeightPx() * 0.6));
+    } finally {
+      if (measureWrap && measureWrap.parentNode)
+        measureWrap.parentNode.removeChild(measureWrap);
+    }
+  }
+
+  /** 1cm 的 px 值（用於需要時換算）；ruler 須設 10mm 才會量到正確高度，0mm 會得到 0 */
+  function getBottomSafetyPx() {
+    var ruler = document.createElement("div");
+    ruler.style.cssText =
+      "position:absolute;left:-9999px;width:1px;height:10mm;visibility:hidden;";
+    document.body.appendChild(ruler);
+    var h = ruler.offsetHeight;
+    document.body.removeChild(ruler);
+    return h && h > 0 ? h : 38;
+  }
+
+  /** 說明文字區塊高度（與行高成比例，用於分頁時計算該行總高度） */
+  function getDescriptionHeightPx() {
+    return Math.round(getLineHeightPx() * 0.65);
+  }
+
+  /**
+   * 換頁用每行佔高：行距 > 0 用 lh+delta×lh；行距 ≤ 0 一律用 lh，不假設 slot 小於 lh，
+   * 避免「中間一大段被吃掉」的裁切問題（實際版面每行至少 lh 高）。
+   */
+  function getSlotHeightForPagination() {
+    var lh = getLineHeightPx();
+    if (state.lineSpacingDelta > 0) {
+      return lh + state.lineSpacingDelta * lh;
+    }
+    return lh;
+  }
+
+  /**
+   * 依「文字大小、行距、說明文字高度」即時計算每頁可放幾行。
+   * 支援分頁標記（強制換頁）與插入圖片區塊。
+   */
+  function computePages() {
+    var fullH = getContentHeightPx();
+    var contentH = Math.max(0, fullH);
+    var lh = getLineHeightPx();
+    var slotH = getSlotHeightForPagination();
+    var descH = getDescriptionHeightPx();
+    var flat = getFlatEntries();
+    var pages = [];
+    var page = [];
+    var used = 0;
+    for (var i = 0; i < flat.length; i++) {
+      var entry = flat[i];
+      if (entry.pageBreak) {
+        if (page.length > 0) {
+          pages.push(page);
+          page = [];
+        }
+        used = 0;
+        continue;
+      }
+      if (entry.image) {
+        var imgH = getImageBlockHeightPx(entry.imageHeightMm);
+        if (used + imgH > contentH && page.length > 0) {
+          pages.push(page);
+          page = [];
+          used = 0;
+        }
+        page.push(entry);
+        used += imgH;
+        continue;
+      }
+      if (entry.content !== undefined) {
+        var blockH = getContentBlockHeightPx(entry.content);
+        if (used + blockH > contentH && page.length > 0) {
+          pages.push(page);
+          page = [];
+          used = 0;
+        }
+        page.push(entry);
+        used += blockH;
+        continue;
+      }
+      var showDescBlock =
+        !!entry.descriptionAbove ||
+        (state.autoItemNumbers && !!entry.itemFirstLine);
+      var lineH = page.length === 0 ? lh : slotH;
+      if (showDescBlock) {
+        lineH += descH;
+      }
+      if (used + lineH > contentH && page.length > 0) {
+        pages.push(page);
+        page = [];
+        used = 0;
+        lineH = lh + (showDescBlock ? descH : 0);
+      }
+      page.push(entry);
+      used += lineH;
+    }
+    if (page.length > 0) pages.push(page);
+    if (pages.length === 0) pages.push([]);
+    return pages;
+  }
+
+  /** 更新預覽區的 CSS 變數（字級、行高、行距 = 1ex + Δ×0.2×行高） */
+  function applyPreviewVars() {
+    var lh = getLineHeightPx();
+    $worksheetPreview.style.setProperty(
+      "--font-size-px",
+      state.fontSize + "px",
+    );
+    $worksheetPreview.style.setProperty("--line-height-px", lh + "px");
+    $worksheetPreview.style.setProperty(
+      "--line-spacing",
+      getLineSpacingPx() + "px",
+    );
+  }
+
+  // 文字大小拉桿
+  if ($fontSize && $fontSizeValue) {
+    function updateFontSize() {
+      pushUndoSnapshot();
+      state.fontSize = Number($fontSize.value);
+      $fontSizeValue.textContent = state.fontSize + "px";
+      applyPreviewVars();
+      renderPreview();
+    }
+    $fontSize.addEventListener("input", updateFontSize);
+    updateFontSize();
+  }
+
+  // 行距拉桿：範圍 -0.2～+0.2，step 0.01（內部 -20～20 再 ÷100）
+  if ($lineSpacing && $lineSpacingValue) {
+    function updateLineSpacing() {
+      pushUndoSnapshot();
+      state.lineSpacingDelta = Number($lineSpacing.value) / 100;
+      var v = state.lineSpacingDelta.toFixed(2);
+      $lineSpacingValue.textContent =
+        (state.lineSpacingDelta > 0 ? "+" : "") + v;
+      applyPreviewVars();
+      renderPreview();
+    }
+    $lineSpacing.addEventListener("input", updateLineSpacing);
+    if (!$fontSize || !$fontSizeValue) applyPreviewVars();
+    updateLineSpacing();
+  }
+
+  // 頁首
+  if ($pageHeader) {
+    function updatePageHeader() {
+      pushUndoSnapshot();
+      state.pageHeader = $pageHeader.value.trim();
+      renderPreview();
+    }
+    $pageHeader.addEventListener("input", updatePageHeader);
+    $pageHeader.addEventListener("change", updatePageHeader);
+    if (state.pageHeader) $pageHeader.value = state.pageHeader;
+  }
+
+  if ($showPageNumbers) {
+    $showPageNumbers.checked = !!state.showPageNumbers;
+    $showPageNumbers.addEventListener("change", function () {
+      pushUndoSnapshot();
+      state.showPageNumbers = !!$showPageNumbers.checked;
+      renderPreview();
+    });
+  }
+  if ($autoItemNumbers) {
+    $autoItemNumbers.checked = !!state.autoItemNumbers;
+    $autoItemNumbers.addEventListener("change", function () {
+      pushUndoSnapshot();
+      state.autoItemNumbers = !!$autoItemNumbers.checked;
+      renderItemList();
+      renderPreview();
+    });
+  }
+
+  // 關於／更新資訊視窗
+  (function setupInfoModal() {
+    if (!$infoButton || !$infoModal) return;
+    var lastFocused = null;
+    var backdrop = $infoModal.querySelector(".info-modal-backdrop");
+
+    function openInfoModal() {
+      if (!$infoModal) return;
+      lastFocused = document.activeElement;
+      $infoModal.hidden = false;
+      document.body.classList.add("is-modal-open");
+      var heading = $infoModal.querySelector("#infoModalTitle");
+      if (heading && typeof heading.focus === "function") {
+        heading.setAttribute("tabindex", "-1");
+        heading.focus();
+      }
+    }
+
+    function closeInfoModal() {
+      if (!$infoModal) return;
+      $infoModal.hidden = true;
+      document.body.classList.remove("is-modal-open");
+      if (lastFocused && typeof lastFocused.focus === "function") {
+        lastFocused.focus();
+      }
+    }
+
+    $infoButton.addEventListener("click", function () {
+      closeMobileActions();
+      if ($infoModal.hidden) {
+        openInfoModal();
+      } else {
+        closeInfoModal();
+      }
+    });
+
+    if ($infoModalClose) {
+      $infoModalClose.addEventListener("click", function () {
+        closeInfoModal();
+      });
+    }
+
+    if (backdrop) {
+      backdrop.addEventListener("click", function () {
+        closeInfoModal();
+      });
+    }
+
+    document.addEventListener("keydown", function (evt) {
+      if (evt.key === "Escape" && !$infoModal.hidden) {
+        evt.preventDefault();
+        closeInfoModal();
+      }
+    });
+  })();
+
+  // 底線樣式
+  document
+    .querySelectorAll('input[name="lineStyle"]')
+    .forEach(function (radio) {
+      radio.addEventListener("change", function () {
+        pushUndoSnapshot();
+        state.lineStyle = this.value;
+        renderPreview();
+      });
+    });
+
+  function addItem() {
+    pushUndoSnapshot();
+    var newItem = ensureItemId({
+      description: "",
+      exampleText: "",
+      lineCount: 1,
+    });
+    var insertIndex;
+    if (
+      state.focusedItemIndex != null &&
+      state.focusedItemIndex >= 0 &&
+      state.focusedItemIndex < state.items.length
+    ) {
+      insertIndex = state.focusedItemIndex + 1;
+      state.items.splice(insertIndex, 0, newItem);
+    } else {
+      insertIndex = state.items.length;
+      state.items.push(newItem);
+    }
+    state.focusedItemIndex = insertIndex;
+    renderItemList();
+    renderPreview();
+    scrollPreviewToItem(insertIndex);
+    var newBlock = $itemList.querySelector(
+      '.item-block[data-item-index="' + insertIndex + '"]',
+    );
+    if (newBlock) {
+      var firstInput = newBlock.querySelector("input");
+      if (firstInput) firstInput.focus();
+    }
+  }
+
+  function removeItem(index) {
+    pushUndoSnapshot();
+    state.items.splice(index, 1);
+    renderItemList();
+    renderPreview();
+  }
+
+  function moveItemByOffset(index, offset) {
+    var toIndex = index + offset;
+    if (index < 0 || toIndex < 0 || toIndex >= state.items.length) return;
+    pushUndoSnapshot();
+    var moved = state.items[index];
+    state.items.splice(index, 1);
+    state.items.splice(toIndex, 0, moved);
+    reorderItemListUpdateFocus(index, toIndex);
+    renderItemList();
+    renderPreview();
+    updatePreviewEditingOutline();
+    scrollPreviewToItem(toIndex);
+  }
+
+  function createMoveButtons(wrap, index, total) {
+    var group = document.createElement("div");
+    group.className = "item-move-btns";
+    var up = document.createElement("button");
+    up.type = "button";
+    up.className = "btn-move-item";
+    up.setAttribute("aria-label", "共這个項目徙去頂面");
+    up.textContent = "↑";
+    up.disabled = index <= 0;
+    up.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveItemByOffset(getBlockIndex(wrap), -1);
+    });
+    var down = document.createElement("button");
+    down.type = "button";
+    down.className = "btn-move-item";
+    down.setAttribute("aria-label", "共這个項目徙去下面");
+    down.textContent = "↓";
+    down.disabled = index >= total - 1;
+    down.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveItemByOffset(getBlockIndex(wrap), 1);
+    });
+    group.appendChild(up);
+    group.appendChild(down);
+    return group;
+  }
+
+  function setItemField(index, field, value) {
+    if (!state.items[index]) return;
+    pushUndoSnapshot();
+    if (field === "lineCount") {
+      state.items[index].lineCount = Math.max(1, parseInt(value, 10) || 1);
+    } else if (field === "imageHeightMm") {
+      var mm = Number(value);
+      if (!isFinite(mm) || mm <= 0) mm = 100;
+      state.items[index].imageHeightMm = Math.max(10, Math.min(250, mm));
+    } else {
+      state.items[index][field] = value;
+    }
+    renderPreview();
+  }
+
+  var lastDragOverId = null;
+  var draggedItemId = null;
+
+  /** 依 state.items 順序重排左側列表 DOM，並更新 data-item-index */
+  function reorderItemListDOM() {
+    if (!$itemList || !state.items.length) return;
+    var blocksById = {};
+    var list = $itemList;
+    for (var k = 0; k < list.children.length; k++) {
+      var block = list.children[k];
+      var id = block.getAttribute("data-item-id");
+      if (id) blocksById[String(id)] = block;
+    }
+    state.items.forEach(function (item, idx) {
+      var block = blocksById[String(item.id)];
+      if (block) {
+        block.setAttribute("data-item-index", String(idx));
+        list.appendChild(block);
+      }
+    });
+  }
+
+  /**
+   * 拖曳經過時立刻重排（與 state 同步）。不用 FLIP：項目多時每次 dragover 若對全列表做
+   * 雙層 rAF + 每格動畫，動畫會重疊打斷，反而卡頓、順序錯亂。
+   */
+  function reorderItemListDuringDrag() {
+    if (!$itemList || !state.items.length) return;
+    var list = $itemList;
+    for (var k = 0; k < list.children.length; k++) {
+      var block = list.children[k];
+      block.style.transition = "";
+      block.style.transform = "";
+    }
+    reorderItemListDOM();
+  }
+
+  /** 拖曳結束：同步左欄 data-index 並重畫預覽（順序僅在 dragover 已寫入 state.items） */
+  function finishSidebarItemDrag(draggedWrap) {
+    draggedItemId = null;
+    lastDragOverId = null;
+    if (draggedWrap) {
+      draggedWrap.classList.remove("item-dragging");
+    }
+    if ($itemList) {
+      $itemList.querySelectorAll(".item-block").forEach(function (el) {
+        el.classList.remove("item-drag-over");
+      });
+    }
+    renderItemList();
+    renderPreview();
+    updatePreviewEditingOutline();
+  }
+
+  /**
+   * 以 data-item-id 對應 state.items 的即時順序；避免拖曳重排後 FLIP 尚未跑完時
+   * data-item-index 過舊，造成插錯位置。
+   */
+  function getBlockIndex(wrap) {
+    var id = wrap.getAttribute("data-item-id");
+    if (id) {
+      for (var i = 0; i < state.items.length; i++) {
+        if (String(state.items[i].id) === String(id)) {
+          return i;
+        }
+      }
+    }
+    var n = parseInt(wrap.getAttribute("data-item-index"), 10);
+    return isNaN(n) ? -1 : n;
+  }
+
+  /** 拖曳重排後更新 focusedItemIndex */
+  function reorderItemListUpdateFocus(fromIndex, toIndex) {
+    if (state.focusedItemIndex === fromIndex) {
+      state.focusedItemIndex = toIndex;
+    } else if (
+      state.focusedItemIndex != null &&
+      fromIndex < state.focusedItemIndex &&
+      toIndex >= state.focusedItemIndex
+    ) {
+      state.focusedItemIndex = state.focusedItemIndex - 1;
+    } else if (
+      state.focusedItemIndex != null &&
+      fromIndex > state.focusedItemIndex &&
+      toIndex <= state.focusedItemIndex
+    ) {
+      state.focusedItemIndex = state.focusedItemIndex + 1;
+    }
+  }
+
+  function renderItemList() {
+    $itemList.innerHTML = "";
+    lastDragOverId = null;
+    var orderMap = buildItemOrderByIndex();
+    state.items.forEach(function (item, i) {
+      var wrap = document.createElement("div");
+      wrap.className = "item-block";
+      wrap.setAttribute("data-item-index", String(i));
+      wrap.setAttribute("data-item-id", item.id);
+      if (item.type === "pageBreak") {
+        wrap.classList.add("item-type-pagebreak");
+        var row = document.createElement("div");
+        row.className = "item-field item-field-last";
+        var label = document.createElement("span");
+        label.className = "item-special-label";
+        label.textContent = "分頁標記";
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-remove";
+        btn.setAttribute("aria-label", "共這个分頁標記刣掉");
+        btn.textContent = "×";
+        btn.addEventListener("click", function () {
+          removeItem(getBlockIndex(wrap));
+        });
+        var dragHandle = document.createElement("span");
+        dragHandle.className = "item-drag-handle";
+        dragHandle.setAttribute("aria-label", "拖曳以調整順序");
+        dragHandle.draggable = true;
+        dragHandle.addEventListener("dragstart", function (e) {
+          pushUndoSnapshot();
+          draggedItemId = item.id;
+          e.dataTransfer.setData("text/plain", item.id);
+          e.dataTransfer.effectAllowed = "move";
+          wrap.classList.add("item-dragging");
+          lastDragOverId = null;
+        });
+        dragHandle.addEventListener("dragend", function () {
+          finishSidebarItemDrag(wrap);
+        });
+        wrap.addEventListener("focusin", function () {
+          state.focusedItemIndex = getBlockIndex(wrap);
+          updatePreviewEditingOutline();
+        });
+        wrap.addEventListener("focusout", function (e) {
+          var target = e.relatedTarget;
+          if (wrap.contains(target)) return;
+          if (
+            target === $addItem ||
+            (target && $addItem && $addItem.contains(target))
+          )
+            return;
+          state.focusedItemIndex = null;
+        });
+        wrap.addEventListener("dragover", function (e) {
+          if (e.dataTransfer.types.indexOf("text/plain") === -1) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          var blockId = wrap.getAttribute("data-item-id");
+          if (!blockId) return;
+          wrap.classList.add("item-drag-over");
+          if (blockId === lastDragOverId) return;
+          if (!draggedItemId || String(blockId) === String(draggedItemId))
+            return;
+          lastDragOverId = blockId;
+          var fromIndex = state.items.findIndex(function (it) {
+            return String(it.id) === String(draggedItemId);
+          });
+          var toIndex = getBlockIndex(wrap);
+          if (fromIndex === -1 || fromIndex === toIndex) return;
+          var moved = state.items[fromIndex];
+          state.items.splice(fromIndex, 1);
+          state.items.splice(toIndex, 0, moved);
+          reorderItemListUpdateFocus(fromIndex, toIndex);
+          reorderItemListDuringDrag();
+        });
+        wrap.addEventListener("dragleave", function (e) {
+          var rt = e.relatedTarget;
+          if (rt && wrap.contains(rt)) return;
+          wrap.classList.remove("item-drag-over");
+        });
+        wrap.addEventListener("drop", function (e) {
+          e.preventDefault();
+          wrap.classList.remove("item-drag-over");
+          lastDragOverId = null;
+        });
+        row.appendChild(label);
+        row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
+        row.appendChild(dragHandle);
+        wrap.appendChild(row);
+        $itemList.appendChild(wrap);
+        return;
+      }
+      if (item.type === "image") {
+        wrap.classList.add("item-type-image");
+        var row = document.createElement("div");
+        row.className = "item-field item-field-last";
+        var label = document.createElement("span");
+        label.className = "item-special-label";
+        label.textContent = "自訂圖片";
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-remove";
+        btn.setAttribute("aria-label", "共這个圖刣掉");
+        btn.textContent = "×";
+        btn.addEventListener("click", function () {
+          removeItem(getBlockIndex(wrap));
+        });
+        var dragHandle = document.createElement("span");
+        dragHandle.className = "item-drag-handle";
+        dragHandle.setAttribute("aria-label", "拖曳以調整順序");
+        dragHandle.draggable = true;
+        dragHandle.addEventListener("dragstart", function (e) {
+          pushUndoSnapshot();
+          draggedItemId = item.id;
+          e.dataTransfer.setData("text/plain", item.id);
+          e.dataTransfer.effectAllowed = "move";
+          wrap.classList.add("item-dragging");
+          lastDragOverId = null;
+        });
+        dragHandle.addEventListener("dragend", function () {
+          finishSidebarItemDrag(wrap);
+        });
+        wrap.addEventListener("focusin", function () {
+          state.focusedItemIndex = getBlockIndex(wrap);
+          updatePreviewEditingOutline();
+          scrollPreviewToItem(getBlockIndex(wrap));
+        });
+        wrap.addEventListener("focusout", function (e) {
+          var target = e.relatedTarget;
+          if (wrap.contains(target)) return;
+          if (
+            target === $addItem ||
+            (target && $addItem && $addItem.contains(target))
+          )
+            return;
+          state.focusedItemIndex = null;
+        });
+        wrap.addEventListener("dragover", function (e) {
+          if (e.dataTransfer.types.indexOf("text/plain") === -1) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          var blockId = wrap.getAttribute("data-item-id");
+          if (!blockId) return;
+          wrap.classList.add("item-drag-over");
+          if (blockId === lastDragOverId) return;
+          if (!draggedItemId || String(blockId) === String(draggedItemId))
+            return;
+          lastDragOverId = blockId;
+          var fromIndex = state.items.findIndex(function (it) {
+            return String(it.id) === String(draggedItemId);
+          });
+          var toIndex = getBlockIndex(wrap);
+          if (fromIndex === -1 || fromIndex === toIndex) return;
+          var moved = state.items[fromIndex];
+          state.items.splice(fromIndex, 1);
+          state.items.splice(toIndex, 0, moved);
+          reorderItemListUpdateFocus(fromIndex, toIndex);
+          reorderItemListDuringDrag();
+        });
+        wrap.addEventListener("dragleave", function (e) {
+          var rt = e.relatedTarget;
+          if (rt && wrap.contains(rt)) return;
+          wrap.classList.remove("item-drag-over");
+        });
+        wrap.addEventListener("drop", function (e) {
+          e.preventDefault();
+          wrap.classList.remove("item-drag-over");
+          lastDragOverId = null;
+        });
+        row.appendChild(label);
+        row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
+        row.appendChild(dragHandle);
+        wrap.appendChild(row);
+
+        var urlRow = document.createElement("div");
+        urlRow.className = "item-field";
+        var urlLabel = document.createElement("label");
+        urlLabel.textContent = "圖片網址";
+        var urlInput = document.createElement("input");
+        urlInput.type = "text";
+        urlInput.placeholder = "請輸入圖片的網址";
+        urlInput.value = item.imageUrl || item.imagePath || "";
+        urlInput.addEventListener("input", function () {
+          setItemField(getBlockIndex(wrap), "imageUrl", urlInput.value);
+        });
+        urlRow.appendChild(urlLabel);
+        urlRow.appendChild(urlInput);
+        wrap.appendChild(urlRow);
+
+        var heightRow = document.createElement("div");
+        heightRow.className = "item-field item-field-last";
+        var heightLabel = document.createElement("label");
+        heightLabel.textContent = "圖片懸度 (mm)";
+        var heightInput = document.createElement("input");
+        heightInput.type = "number";
+        heightInput.min = "10";
+        heightInput.max = "250";
+        heightInput.step = "1";
+        var initHeight = Number(item.imageHeightMm);
+        if (!isFinite(initHeight) || initHeight <= 0) initHeight = 100;
+        heightInput.value = initHeight;
+        heightInput.addEventListener("input", function () {
+          var idx = getBlockIndex(wrap);
+          setItemField(idx, "imageHeightMm", heightInput.value);
+          // 反映 clamp 後的結果，避免 UI 跟狀態落差
+          if (state.items[idx] && state.items[idx].imageHeightMm != null) {
+            heightInput.value = state.items[idx].imageHeightMm;
+          }
+        });
+        heightRow.appendChild(heightLabel);
+        heightRow.appendChild(heightInput);
+        wrap.appendChild(heightRow);
+
+        $itemList.appendChild(wrap);
+        return;
+      }
+      if (item.type === "content") {
+        wrap.classList.add("item-type-content");
+        var row = document.createElement("div");
+        row.className = "item-field item-field-last";
+        var label = document.createElement("span");
+        label.className = "item-special-label";
+        label.textContent = "段落文字";
+        var btn = document.createElement("button");
+        btn.type = "button";
+        btn.className = "btn-remove";
+        btn.setAttribute("aria-label", "共這个文字區塊刣掉");
+        btn.textContent = "×";
+        btn.addEventListener("click", function () {
+          removeItem(getBlockIndex(wrap));
+        });
+        var dragHandle = document.createElement("span");
+        dragHandle.className = "item-drag-handle";
+        dragHandle.setAttribute("aria-label", "拖曳以調整順序");
+        dragHandle.draggable = true;
+        dragHandle.addEventListener("dragstart", function (e) {
+          pushUndoSnapshot();
+          draggedItemId = item.id;
+          e.dataTransfer.setData("text/plain", item.id);
+          e.dataTransfer.effectAllowed = "move";
+          wrap.classList.add("item-dragging");
+          lastDragOverId = null;
+        });
+        dragHandle.addEventListener("dragend", function () {
+          finishSidebarItemDrag(wrap);
+        });
+        wrap.addEventListener("focusin", function () {
+          state.focusedItemIndex = getBlockIndex(wrap);
+          updatePreviewEditingOutline();
+          scrollPreviewToItem(getBlockIndex(wrap));
+        });
+        wrap.addEventListener("focusout", function (e) {
+          var target = e.relatedTarget;
+          if (wrap.contains(target)) return;
+          if (
+            target === $addItem ||
+            (target && $addItem && $addItem.contains(target))
+          )
+            return;
+          state.focusedItemIndex = null;
+        });
+        wrap.addEventListener("dragover", function (e) {
+          if (e.dataTransfer.types.indexOf("text/plain") === -1) return;
+          e.preventDefault();
+          e.dataTransfer.dropEffect = "move";
+          var blockId = wrap.getAttribute("data-item-id");
+          if (!blockId) return;
+          wrap.classList.add("item-drag-over");
+          if (blockId === lastDragOverId) return;
+          if (!draggedItemId || String(blockId) === String(draggedItemId))
+            return;
+          lastDragOverId = blockId;
+          var fromIndex = state.items.findIndex(function (it) {
+            return String(it.id) === String(draggedItemId);
+          });
+          var toIndex = getBlockIndex(wrap);
+          if (fromIndex === -1 || fromIndex === toIndex) return;
+          var moved = state.items[fromIndex];
+          state.items.splice(fromIndex, 1);
+          state.items.splice(toIndex, 0, moved);
+          reorderItemListUpdateFocus(fromIndex, toIndex);
+          reorderItemListDuringDrag();
+        });
+        wrap.addEventListener("dragleave", function (e) {
+          var rt = e.relatedTarget;
+          if (rt && wrap.contains(rt)) return;
+          wrap.classList.remove("item-drag-over");
+        });
+        wrap.addEventListener("drop", function (e) {
+          e.preventDefault();
+          wrap.classList.remove("item-drag-over");
+          lastDragOverId = null;
+        });
+        var textareaRow = document.createElement("div");
+        textareaRow.className = "item-field item-field-content";
+        var textarea = document.createElement("textarea");
+        textarea.rows = 5;
+        textarea.placeholder = "有支援 Markdown 語法";
+        textarea.value = typeof item.content === "string" ? item.content : "";
+        textarea.addEventListener("input", function () {
+          setItemField(getBlockIndex(wrap), "content", textarea.value);
+        });
+        textareaRow.appendChild(textarea);
+        row.appendChild(label);
+        row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
+        row.appendChild(dragHandle);
+        wrap.appendChild(row);
+        wrap.appendChild(textareaRow);
+        $itemList.appendChild(wrap);
+        return;
+      }
+      function setFocusedItemIndex(value) {
+        state.focusedItemIndex = value;
+        updatePreviewEditingOutline();
+      }
+      wrap.addEventListener("focusin", function () {
+        var idx = getBlockIndex(wrap);
+        setFocusedItemIndex(idx);
+        scrollPreviewToItem(idx);
+      });
+      wrap.addEventListener("focusout", function (e) {
+        var target = e.relatedTarget;
+        if (wrap.contains(target)) return;
+        if (
+          target === $addItem ||
+          (target && $addItem && $addItem.contains(target))
+        )
+          return;
+        if (
+          (target && $insertMenu && $insertMenu.contains(target)) ||
+          (target && $insertMenuToggle && $insertMenuToggle.contains(target))
+        )
+          return;
+        setFocusedItemIndex(null);
+      });
+      var descRow = document.createElement("div");
+      descRow.className = "item-field";
+      var descLabel = document.createElement("label");
+      var wOrd = orderMap[i];
+      descLabel.textContent =
+        state.autoItemNumbers && wOrd != null
+          ? String(wOrd) + ". 項目標題"
+          : "項目標題";
+      var descInput = document.createElement("input");
+      descInput.type = "text";
+      descInput.placeholder = "寫佇項目頂面的標題";
+      descInput.value = item.description || "";
+      descInput.addEventListener("input", function () {
+        setItemField(getBlockIndex(wrap), "description", descInput.value);
+      });
+      descRow.appendChild(descLabel);
+      descRow.appendChild(descInput);
+      var exRow = document.createElement("div");
+      exRow.className = "item-field item-field-content";
+      var exLabel = document.createElement("label");
+      exLabel.textContent = "字詞見本";
+      var exInput = document.createElement("textarea");
+      exInput.className = "item-example-textarea";
+      exInput.rows = 3;
+      exInput.placeholder = "參考的字詞（會當用｜符號分欄位）";
+      exInput.value = item.exampleText || "";
+      exInput.addEventListener("input", function () {
+        setItemField(getBlockIndex(wrap), "exampleText", exInput.value);
+      });
+      exRow.appendChild(exLabel);
+      exRow.appendChild(exInput);
+      var lcRow = document.createElement("div");
+      lcRow.className = "item-field item-field-last";
+      var lcLabel = document.createElement("label");
+      lcLabel.textContent = "練幾逝";
+      var lcInput = document.createElement("input");
+      lcInput.type = "number";
+      lcInput.min = 1;
+      lcInput.value = item.lineCount;
+      lcInput.addEventListener("input", function () {
+        var idx = getBlockIndex(wrap);
+        setItemField(idx, "lineCount", lcInput.value);
+        lcInput.value = state.items[idx].lineCount;
+      });
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "btn-remove";
+      btn.setAttribute("aria-label", "共這个練習項目刣掉");
+      btn.textContent = "×";
+      btn.addEventListener("click", function () {
+        removeItem(getBlockIndex(wrap));
+      });
+      var dragHandle = document.createElement("span");
+      dragHandle.className = "item-drag-handle";
+      dragHandle.setAttribute("aria-label", "拖曳以調整順序");
+      dragHandle.draggable = true;
+      dragHandle.addEventListener("dragstart", function (e) {
+        pushUndoSnapshot();
+        draggedItemId = item.id;
+        e.dataTransfer.setData("text/plain", item.id);
+        e.dataTransfer.effectAllowed = "move";
+        wrap.classList.add("item-dragging");
+        lastDragOverId = null;
+      });
+      dragHandle.addEventListener("dragend", function () {
+        finishSidebarItemDrag(wrap);
+      });
+      lcRow.appendChild(lcLabel);
+      lcRow.appendChild(lcInput);
+      lcRow.appendChild(btn);
+      lcRow.appendChild(createMoveButtons(wrap, i, state.items.length));
+      lcRow.appendChild(dragHandle);
+      wrap.addEventListener("dragover", function (e) {
+        if (e.dataTransfer.types.indexOf("text/plain") === -1) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "move";
+        var blockId = wrap.getAttribute("data-item-id");
+        if (!blockId) return;
+        wrap.classList.add("item-drag-over");
+        if (blockId === lastDragOverId) return;
+        if (!draggedItemId || String(blockId) === String(draggedItemId)) return;
+        lastDragOverId = blockId;
+        var fromIndex = state.items.findIndex(function (it) {
+          return String(it.id) === String(draggedItemId);
+        });
+        var toIndex = getBlockIndex(wrap);
+        if (fromIndex === -1 || fromIndex === toIndex) return;
+        var moved = state.items[fromIndex];
+        state.items.splice(fromIndex, 1);
+        state.items.splice(toIndex, 0, moved);
+        reorderItemListUpdateFocus(fromIndex, toIndex);
+        reorderItemListDuringDrag();
+      });
+      wrap.addEventListener("dragleave", function (e) {
+        var rt = e.relatedTarget;
+        if (rt && wrap.contains(rt)) return;
+        wrap.classList.remove("item-drag-over");
+      });
+      wrap.addEventListener("drop", function (e) {
+        e.preventDefault();
+        wrap.classList.remove("item-drag-over");
+        lastDragOverId = null;
+      });
+      wrap.appendChild(descRow);
+      wrap.appendChild(exRow);
+      wrap.appendChild(lcRow);
+      $itemList.appendChild(wrap);
+    });
+  }
+
+  function exampleColumnsHaveContent(arr) {
+    return arr.some(function (c) {
+      return c != null && String(c).trim() !== "";
+    });
+  }
+
+  /** 建立一筆顯示行（可選說明在上方 + 範例字 + 練習區 + 底線） */
+  function createLineEl(flatLine, styleClass, itemOrderByIndex) {
+    var wrap = document.createElement("div");
+    wrap.className = "preview-line-wrap";
+    var showDescRow =
+      !!flatLine.descriptionAbove ||
+      (state.autoItemNumbers && !!flatLine.itemFirstLine);
+    if (showDescRow) {
+      var desc = document.createElement("div");
+      desc.className = "line-description";
+      var ord =
+        state.autoItemNumbers && itemOrderByIndex
+          ? itemOrderByIndex[flatLine.itemIndex]
+          : null;
+      var text = "";
+      if (ord != null) text += String(ord) + ".";
+      var raw = flatLine.descriptionAbove;
+      var d =
+        raw != null && String(raw).replace(/^\s+|\s+$/g, "") !== ""
+          ? String(raw).replace(/^\s+|\s+$/g, "")
+          : "";
+      if (d) {
+        if (text) text += " ";
+        text += d;
+      }
+      desc.textContent = text || "\u00A0";
+      wrap.appendChild(desc);
+    }
+    var row = document.createElement("div");
+    row.className = "preview-line " + styleClass;
+    var content = document.createElement("div");
+    content.className = "row-content";
+    var cols = flatLine.exampleColumns;
+    if (!cols || cols.length === 0) cols = [""];
+    var hasExample = exampleColumnsHaveContent(cols);
+    if (cols.length === 1) {
+      var example = document.createElement("span");
+      example.className = "example-text";
+      example.textContent = cols[0] || "\u00A0";
+      if (!hasExample) {
+        example.setAttribute("aria-hidden", "true");
+        example.classList.add("example-text-placeholder");
+      }
+      content.appendChild(example);
+    } else {
+      var colWrap = document.createElement("div");
+      colWrap.className = "example-text-columns";
+      cols.forEach(function (colText, idx) {
+        var sp = document.createElement("span");
+        sp.className = "example-text";
+        sp.textContent = colText || "\u00A0";
+        if (!hasExample && idx === 0) {
+          sp.setAttribute("aria-hidden", "true");
+          sp.classList.add("example-text-placeholder");
+        }
+        colWrap.appendChild(sp);
+      });
+      content.appendChild(colWrap);
+    }
+    var zone = document.createElement("div");
+    zone.className = "practice-zone";
+    var baselineLine = document.createElement("span");
+    baselineLine.className = "baseline-line";
+    content.appendChild(zone);
+    row.appendChild(content);
+    var guideWrap = document.createElement("div");
+    guideWrap.className = "baseline-guides";
+    var baselineTop = document.createElement("span");
+    baselineTop.className = "baseline-top";
+    var baselineBottom = document.createElement("span");
+    baselineBottom.className = "baseline-bottom";
+    guideWrap.appendChild(baselineTop);
+    guideWrap.appendChild(baselineLine);
+    guideWrap.appendChild(baselineBottom);
+    row.appendChild(guideWrap);
+    wrap.appendChild(row);
+    return wrap;
+  }
+
+  /** 依目前 focusedItemIndex 在預覽區為對應項目加上/移除編輯中外框 */
+  function updatePreviewEditingOutline() {
+    var index = state.focusedItemIndex;
+    $worksheetPreview
+      .querySelectorAll(".preview-item-group")
+      .forEach(function (el) {
+        var isActive =
+          index != null &&
+          String(el.getAttribute("data-item-index")) === String(index);
+        el.classList.toggle("preview-item-editing", !!isActive);
+      });
+  }
+
+  /** 將預覽區捲動到指定項目的第一個區塊 */
+  function scrollPreviewToItem(itemIndex) {
+    if (!$worksheetPreview || itemIndex == null) return;
+    var first = $worksheetPreview.querySelector(
+      '.preview-item-group[data-item-index="' + itemIndex + '"]',
+    );
+    if (first) {
+      first.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  }
+
+  function renderPreview() {
+    var savedScrollTop = $main ? $main.scrollTop : 0;
+    $worksheetPreview.innerHTML = "";
+    applyPreviewVars();
+    var styleClass = state.lineStyle === "triple" ? "triple" : "single";
+    var itemOrderByIndex = buildItemOrderByIndex();
+    var pages = computePages();
+    pages.forEach(function (pageEntries, pageIndex) {
+      var pageEl = document.createElement("div");
+      pageEl.className = "worksheet-page";
+      if (state.pageHeader) {
+        var headerEl = document.createElement("div");
+        headerEl.className = "worksheet-page-header";
+        headerEl.textContent = state.pageHeader;
+        pageEl.appendChild(headerEl);
+      }
+      var contentEl = document.createElement("div");
+      contentEl.className = "worksheet-page-content";
+      var linesEl = document.createElement("div");
+      linesEl.className = "preview-lines";
+      var currentGroup = null;
+      var currentItemIndex = -1;
+      for (var j = 0; j < pageEntries.length; j++) {
+        var entry = pageEntries[j];
+        if (entry.image) {
+          if (currentGroup) linesEl.appendChild(currentGroup);
+          currentGroup = document.createElement("div");
+          currentGroup.className = "preview-item-group";
+          currentGroup.setAttribute("data-item-index", String(entry.itemIndex));
+          var imgWrap = document.createElement("div");
+          imgWrap.className = "preview-image-block";
+          var img = document.createElement("img");
+          img.crossOrigin = "anonymous";
+          img.src = entry.image;
+          img.alt = "自訂圖片";
+          if (entry.imageHeightMm) {
+            img.style.height = String(entry.imageHeightMm) + "mm";
+            img.style.maxHeight = "none"; // 讓設定的高度可高於 CSS 預設上限
+          }
+          imgWrap.appendChild(img);
+          currentGroup.appendChild(imgWrap);
+          linesEl.appendChild(currentGroup);
+          currentGroup = null;
+          currentItemIndex = -1;
+          continue;
+        }
+        if (entry.content !== undefined) {
+          if (currentGroup) linesEl.appendChild(currentGroup);
+          currentGroup = document.createElement("div");
+          currentGroup.className = "preview-item-group";
+          currentGroup.setAttribute("data-item-index", String(entry.itemIndex));
+          var contentWrap = document.createElement("div");
+          contentWrap.className = "preview-content-block";
+          var raw = entry.content || "";
+          var mdHtml = paragraphMarkdownToHtml(raw);
+          if (mdHtml != null) {
+            contentWrap.innerHTML = mdHtml;
+          } else {
+            contentWrap.textContent = raw || "\u00A0";
+          }
+          currentGroup.appendChild(contentWrap);
+          linesEl.appendChild(currentGroup);
+          currentGroup = null;
+          currentItemIndex = -1;
+          continue;
+        }
+        if (entry.itemIndex !== currentItemIndex) {
+          if (currentGroup) linesEl.appendChild(currentGroup);
+          currentGroup = document.createElement("div");
+          currentGroup.className = "preview-item-group";
+          currentGroup.setAttribute("data-item-index", String(entry.itemIndex));
+          currentItemIndex = entry.itemIndex;
+        }
+        currentGroup.appendChild(
+          createLineEl(entry, styleClass, itemOrderByIndex),
+        );
+      }
+      if (currentGroup) linesEl.appendChild(currentGroup);
+      contentEl.appendChild(linesEl);
+      pageEl.appendChild(contentEl);
+      if (state.showPageNumbers) {
+        var footerEl = document.createElement("div");
+        footerEl.className = "worksheet-page-footer";
+        footerEl.textContent = String(pageIndex + 1);
+        pageEl.appendChild(footerEl);
+      }
+      $worksheetPreview.appendChild(pageEl);
+    });
+    updatePreviewEditingOutline();
+    if ($main) $main.scrollTop = savedScrollTop;
+    updatePreviewScale();
+  }
+
+  $addItem.addEventListener("click", addItem);
+  if ($undoButton) {
+    $undoButton.addEventListener("click", undoLastEdit);
+  }
+  if ($redoButton) {
+    $redoButton.addEventListener("click", redoLastEdit);
+  }
+
+  document.addEventListener("keydown", function (evt) {
+    var key = String(evt.key).toLowerCase();
+    if (!(evt.ctrlKey || evt.metaKey) || key !== "z") return;
+    var isRedoHotkey = evt.shiftKey;
+    var isUndoHotkey =
+      (evt.ctrlKey || evt.metaKey) && !evt.shiftKey && key === "z";
+    evt.preventDefault();
+    if (isRedoHotkey) {
+      redoLastEdit();
+    } else if (isUndoHotkey) {
+      undoLastEdit();
+    }
+  });
+
+  if ($settingsToggle && $settingsPanel) {
+    $settingsToggle.addEventListener("click", function () {
+      var isCollapsed = $settingsPanel.classList.toggle("is-collapsed");
+      $settingsToggle.setAttribute(
+        "aria-expanded",
+        isCollapsed ? "false" : "true",
+      );
+      if (isCollapsed) {
+        document.body.classList.remove("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+      } else {
+        closeMobileActions();
+        document.body.classList.add("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = false;
+      }
+    });
+  }
+
+  /** 在目前項目下方插入一筆項目（分頁標記或圖片） */
+  function insertBelowCurrent(item) {
+    pushUndoSnapshot();
+    var insertIndex;
+    if (
+      state.focusedItemIndex != null &&
+      state.focusedItemIndex >= 0 &&
+      state.focusedItemIndex < state.items.length
+    ) {
+      insertIndex = state.focusedItemIndex + 1;
+    } else {
+      insertIndex = state.items.length;
+    }
+    ensureItemId(item);
+    state.items.splice(insertIndex, 0, item);
+    state.focusedItemIndex = insertIndex;
+    renderItemList();
+    renderPreview();
+    scrollPreviewToItem(insertIndex);
+    closeInsertMenu();
+  }
+
+  function openInsertMenu() {
+    if (!$insertMenu || !$insertMenuToggle) return;
+    $insertMenu.hidden = false;
+    $insertMenuToggle.setAttribute("aria-expanded", "true");
+    if (isCompactLayout()) {
+      $insertMenu.style.top = "";
+      $insertMenu.style.left = "";
+      return;
+    }
+    var rect = $insertMenuToggle.getBoundingClientRect();
+    var menuTop = rect.bottom + 4;
+    var menuLeft = rect.left;
+    $insertMenu.style.top = menuTop + "px";
+    $insertMenu.style.left = menuLeft + "px";
+    requestAnimationFrame(function () {
+      var menuRect = $insertMenu.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) {
+        $insertMenu.style.left = window.innerWidth - menuRect.width - 8 + "px";
+      }
+      if (menuRect.bottom > window.innerHeight) {
+        $insertMenu.style.top = rect.top - menuRect.height - 4 + "px";
+      }
+    });
+  }
+
+  function closeInsertMenu() {
+    if ($insertMenu) {
+      $insertMenu.hidden = true;
+      if ($insertMenuToggle)
+        $insertMenuToggle.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  if ($insertMenuToggle && $insertMenu) {
+    $insertMenuToggle.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if ($insertMenu.hidden) {
+        openInsertMenu();
+      } else {
+        closeInsertMenu();
+      }
+    });
+    document.addEventListener("click", function () {
+      closeInsertMenu();
+    });
+    $insertMenu.addEventListener("click", function (e) {
+      e.stopPropagation();
+    });
+  }
+  if ($insertPageBreak) {
+    $insertPageBreak.addEventListener("click", function () {
+      insertBelowCurrent({ type: "pageBreak" });
+    });
+  }
+  if ($insertCustomImage) {
+    $insertCustomImage.addEventListener("click", function () {
+      insertBelowCurrent({
+        type: "image",
+        imageUrl: "",
+        imageHeightMm: 100,
+      });
+    });
+  }
+  if ($insertContent) {
+    $insertContent.addEventListener("click", function () {
+      insertBelowCurrent({ type: "content", content: "" });
+    });
+  }
+
+  /** 載入模板：清單（templates/index.json 取得失敗時使用） */
+  var defaultTemplateList = [
+    { name: "空白練習單（三題）", file: "空白練習單.json" },
+    { name: "說明佮練習格", file: "說明佮練習格.json" },
+    { name: "三線格大筆記", file: "三線格大筆記.json" },
+  ];
+
+  /** 載入教材：教材清單（textbooks/index.json 取得失敗時使用） */
+  var defaultTextbookList = [
+    { name: "台羅書寫練習", file: "台羅書寫練習.json" },
+  ];
+
+  function openLoadTemplateMenu(list) {
+    if (!$loadTemplateMenu || !$loadTemplateBtn || !list || !list.length)
+      return;
+    $loadTemplateMenu.innerHTML = "";
+    list.forEach(function (entry) {
+      var name = entry.name || entry.file || "未命名模板";
+      var file = entry.file;
+      if (!file) return;
+      var li = document.createElement("li");
+      li.setAttribute("role", "none");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "menuitem");
+      btn.setAttribute("data-file", file);
+      btn.textContent = name;
+      btn.addEventListener("click", function () {
+        var path = "templates/" + file;
+        fetch(path)
+          .then(function (r) {
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+          })
+          .then(function (data) {
+            applyImportedSettings(data);
+            closeLoadTemplateMenu();
+            if (isCompactLayout()) setMobilePane("preview");
+          })
+          .catch(function (err) {
+            alert(
+              "無法載入模板：「" +
+                name +
+                "」\n" +
+                (err && err.message ? err.message : "請確認檔案存在且可讀取。"),
+            );
+          });
+      });
+      li.appendChild(btn);
+      $loadTemplateMenu.appendChild(li);
+    });
+    $loadTemplateMenu.hidden = false;
+    $loadTemplateBtn.setAttribute("aria-expanded", "true");
+    closeMobileActions();
+    if (isCompactLayout()) {
+      $loadTemplateMenu.style.top = "";
+      $loadTemplateMenu.style.left = "";
+      return;
+    }
+    var rect = $loadTemplateBtn.getBoundingClientRect();
+    $loadTemplateMenu.style.top = rect.bottom + 4 + "px";
+    $loadTemplateMenu.style.left = rect.left + "px";
+    requestAnimationFrame(function () {
+      var menuRect = $loadTemplateMenu.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) {
+        $loadTemplateMenu.style.left =
+          window.innerWidth - menuRect.width - 8 + "px";
+      }
+      if (menuRect.bottom > window.innerHeight) {
+        $loadTemplateMenu.style.top = rect.top - menuRect.height - 4 + "px";
+      }
+    });
+  }
+
+  function closeLoadTemplateMenu() {
+    if ($loadTemplateMenu) {
+      $loadTemplateMenu.hidden = true;
+      if ($loadTemplateBtn)
+        $loadTemplateBtn.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  function openLoadTextbookMenu(list) {
+    if (!$loadTextbookMenu || !$loadTextbookBtn || !list || !list.length)
+      return;
+    $loadTextbookMenu.innerHTML = "";
+    list.forEach(function (entry) {
+      var name = entry.name || entry.file || "未命名教材";
+      var file = entry.file;
+      if (!file) return;
+      var li = document.createElement("li");
+      li.setAttribute("role", "none");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.setAttribute("role", "menuitem");
+      btn.setAttribute("data-file", file);
+      btn.textContent = name;
+      btn.addEventListener("click", function () {
+        var path = "textbooks/" + file;
+        fetch(path)
+          .then(function (r) {
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+          })
+          .then(function (data) {
+            applyImportedSettings(data);
+            closeLoadTextbookMenu();
+            if (isCompactLayout()) setMobilePane("preview");
+          })
+          .catch(function (err) {
+            alert(
+              "無法載入教材：「" +
+                name +
+                "」\n" +
+                (err && err.message ? err.message : "請確認檔案存在且可讀取。"),
+            );
+          });
+      });
+      li.appendChild(btn);
+      $loadTextbookMenu.appendChild(li);
+    });
+    $loadTextbookMenu.hidden = false;
+    $loadTextbookBtn.setAttribute("aria-expanded", "true");
+    closeMobileActions();
+    if (isCompactLayout()) {
+      $loadTextbookMenu.style.top = "";
+      $loadTextbookMenu.style.left = "";
+      return;
+    }
+    var rect = $loadTextbookBtn.getBoundingClientRect();
+    $loadTextbookMenu.style.top = rect.bottom + 4 + "px";
+    $loadTextbookMenu.style.left = rect.left + "px";
+    requestAnimationFrame(function () {
+      var menuRect = $loadTextbookMenu.getBoundingClientRect();
+      if (menuRect.right > window.innerWidth) {
+        $loadTextbookMenu.style.left =
+          window.innerWidth - menuRect.width - 8 + "px";
+      }
+      if (menuRect.bottom > window.innerHeight) {
+        $loadTextbookMenu.style.top = rect.top - menuRect.height - 4 + "px";
+      }
+    });
+  }
+
+  function closeLoadTextbookMenu() {
+    if ($loadTextbookMenu) {
+      $loadTextbookMenu.hidden = true;
+      if ($loadTextbookBtn)
+        $loadTextbookBtn.setAttribute("aria-expanded", "false");
+    }
+  }
+
+  if ($loadTemplateBtn && $loadTemplateMenu) {
+    $loadTemplateBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      closeLoadTextbookMenu();
+      if ($loadTemplateMenu.hidden) {
+        fetch("templates/index.json?v=1.0.4")
+          .then(function (r) {
+            if (!r.ok) throw new Error("無法取得模板清單");
+            return r.json();
+          })
+          .then(function (list) {
+            if (Array.isArray(list) && list.length > 0) {
+              openLoadTemplateMenu(list);
+            } else {
+              openLoadTemplateMenu(defaultTemplateList);
+            }
+          })
+          .catch(function () {
+            openLoadTemplateMenu(defaultTemplateList);
+          });
+      } else {
+        closeLoadTemplateMenu();
+      }
+    });
+    $loadTemplateMenu.addEventListener("click", function (e) {
+      e.stopPropagation();
+    });
+  }
+
+  if ($loadTextbookBtn && $loadTextbookMenu) {
+    $loadTextbookBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      closeLoadTemplateMenu();
+      if ($loadTextbookMenu.hidden) {
+        fetch("textbooks/index.json?v=1.0.9")
+          .then(function (r) {
+            if (!r.ok) throw new Error("無法取得教材清單");
+            return r.json();
+          })
+          .then(function (list) {
+            if (Array.isArray(list) && list.length > 0) {
+              openLoadTextbookMenu(list);
+            } else {
+              openLoadTextbookMenu(defaultTextbookList);
+            }
+          })
+          .catch(function () {
+            openLoadTextbookMenu(defaultTextbookList);
+          });
+      } else {
+        closeLoadTextbookMenu();
+      }
+    });
+    $loadTextbookMenu.addEventListener("click", function (e) {
+      e.stopPropagation();
+    });
+  }
+
+  document.addEventListener("click", function () {
+    closeLoadTextbookMenu();
+    closeLoadTemplateMenu();
+    closeMobileActions();
+  });
+
+  /** 匯出設定為 JSON 檔 */
+  function exportSettingsToJson() {
+    var data = {
+      version: 1,
+      items: state.items.map(function (item) {
+        if (item.type === "pageBreak") {
+          return { type: "pageBreak", id: item.id };
+        }
+        if (item.type === "image") {
+          var imageUrl = item.imageUrl || item.imagePath;
+          var heightMm = undefined;
+          var mm = Number(item.imageHeightMm);
+          if (isFinite(mm) && mm > 0) {
+            heightMm = Math.max(10, Math.min(250, mm));
+          }
+          return {
+            type: "image",
+            imageUrl: imageUrl ? String(imageUrl) : "",
+            imageHeightMm: heightMm,
+            id: item.id,
+          };
+        }
+        if (item.type === "content") {
+          return {
+            type: "content",
+            content: typeof item.content === "string" ? item.content : "",
+            id: item.id,
+          };
+        }
+        return {
+          description: item.description || "",
+          exampleText: item.exampleText || "",
+          lineCount: Math.max(1, parseInt(item.lineCount, 10) || 1),
+          id: item.id,
+        };
+      }),
+      lineStyle: state.lineStyle,
+      lineSpacingDelta: state.lineSpacingDelta,
+      fontSize: state.fontSize,
+      pageHeader: state.pageHeader || "",
+      showPageNumbers: !!state.showPageNumbers,
+      autoItemNumbers: !!state.autoItemNumbers,
+    };
+    var json = JSON.stringify(data, null, 2);
+    var blob = new Blob([json], { type: "application/json" });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url;
+    a.download = "台語字練習簿設定.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  /** 從 JSON 套用設定並更新介面 */
+  function applyImportedSettings(data) {
+    if (!data || typeof data !== "object") return;
+    pushUndoSnapshot();
+    if (Array.isArray(data.items) && data.items.length > 0) {
+      state.items = data.items.map(function (item) {
+        if (item.type === "pageBreak") {
+          return ensureItemId({ type: "pageBreak", id: item.id });
+        }
+        if (item.type === "image") {
+          var url = item.imageUrl || item.imagePath;
+          var heightMm = undefined;
+          var mm = Number(item.imageHeightMm);
+          if (isFinite(mm) && mm > 0) {
+            heightMm = Math.max(10, Math.min(250, mm));
+          }
+          return ensureItemId({
+            type: "image",
+            imageUrl: url != null ? String(url) : "",
+            imageHeightMm: heightMm,
+            id: item.id,
+          });
+        }
+        if (item.type === "content") {
+          return ensureItemId({
+            type: "content",
+            content: typeof item.content === "string" ? item.content : "",
+            id: item.id,
+          });
+        }
+        return ensureItemId({
+          description: String(item.description != null ? item.description : ""),
+          exampleText: String(item.exampleText != null ? item.exampleText : ""),
+          lineCount: Math.max(1, parseInt(item.lineCount, 10) || 1),
+          id: item.id,
+        });
+      });
+      ensureUniqueItemIds();
+    }
+    if (data.lineStyle === "single" || data.lineStyle === "triple") {
+      state.lineStyle = data.lineStyle;
+      document
+        .querySelectorAll('input[name="lineStyle"]')
+        .forEach(function (radio) {
+          radio.checked = radio.value === state.lineStyle;
+        });
+    }
+    if (
+      typeof data.lineSpacingDelta === "number" &&
+      data.lineSpacingDelta >= -0.2 &&
+      data.lineSpacingDelta <= 0.2
+    ) {
+      state.lineSpacingDelta = data.lineSpacingDelta;
+      if ($lineSpacing)
+        $lineSpacing.value = Math.round(state.lineSpacingDelta * 100);
+      if ($lineSpacingValue) {
+        var v = state.lineSpacingDelta.toFixed(2);
+        $lineSpacingValue.textContent =
+          (state.lineSpacingDelta > 0 ? "+" : "") + v;
+      }
+    }
+    if (
+      typeof data.fontSize === "number" &&
+      data.fontSize >= 16 &&
+      data.fontSize <= 40
+    ) {
+      state.fontSize = data.fontSize;
+      if ($fontSize) $fontSize.value = state.fontSize;
+      if ($fontSizeValue) $fontSizeValue.textContent = state.fontSize + "px";
+    }
+    if (typeof data.pageHeader === "string") {
+      state.pageHeader = data.pageHeader;
+      if ($pageHeader) $pageHeader.value = state.pageHeader;
+    }
+    state.showPageNumbers = data.showPageNumbers === true;
+    state.autoItemNumbers = data.autoItemNumbers === true;
+    if ($showPageNumbers) $showPageNumbers.checked = state.showPageNumbers;
+    if ($autoItemNumbers) $autoItemNumbers.checked = state.autoItemNumbers;
+    applyPreviewVars();
+    renderItemList();
+    renderPreview();
+  }
+
+  if ($importSettings && $importSettingsFile) {
+    $importSettings.addEventListener("click", function () {
+      closeMobileActions();
+      $importSettingsFile.value = "";
+      $importSettingsFile.click();
+    });
+    $importSettingsFile.addEventListener("change", function () {
+      var file = this.files && this.files[0];
+      if (!file) return;
+      var reader = new FileReader();
+      reader.onload = function () {
+        try {
+          var data = JSON.parse(reader.result);
+          applyImportedSettings(data);
+          if (isCompactLayout()) setMobilePane("preview");
+        } catch (e) {
+          alert("無法解析設定檔，請確認是有效的 JSON 格式。");
+        }
+      };
+      reader.readAsText(file, "UTF-8");
+    });
+  }
+  if ($exportSettings) {
+    $exportSettings.addEventListener("click", function () {
+      closeMobileActions();
+      exportSettingsToJson();
+    });
+  }
+
+  $exportPdf.addEventListener("click", function () {
+    closeMobileActions();
+    var pageEls = $worksheetPreview.querySelectorAll(".worksheet-page");
+    var pageArray = Array.prototype.slice.call(pageEls);
+    if (pageArray.length === 0) return;
+    var opt = {
+      margin: 0,
+      filename: "台語字練習簿.pdf",
+      image: { type: "jpeg", quality: 0.98 },
+      html2canvas: {
+        scale: 2,
+        useCORS: true,
+        letterRendering: true,
+        logging: false,
+      },
+      jsPDF: { unit: "mm", format: "a4", orientation: "portrait" },
+    };
+
+    /** 與預覽區使用相同計算方式，並把實際 px 值內聯到 clone 內所有相關節點，避免 html2canvas 對 CSS 變數解析不一致 */
+    function applyPreviewVarsToClone(clone) {
+      var lh = getLineHeightPx();
+      var spacing = getLineSpacingPx();
+      var fs = state.fontSize + "px";
+      var lhPx = lh + "px";
+      var spacingPx = spacing + "px";
+      clone.style.setProperty("--font-size-px", fs);
+      clone.style.setProperty("--line-height-px", lhPx);
+      clone.style.setProperty("--line-spacing", spacingPx);
+      // 內聯寫入 px，確保 html2canvas 擷取時與預覽一致
+      var sheet = clone.querySelector(".worksheet-page-content");
+      if (sheet) sheet.style.fontSize = fs;
+      clone.querySelectorAll(".preview-line-wrap").forEach(function (el) {
+        el.style.marginBottom = spacingPx;
+      });
+      clone
+        .querySelectorAll(
+          ".preview-lines > .preview-line-wrap:last-child, .preview-item-group .preview-line-wrap:last-child",
+        )
+        .forEach(function (el) {
+          el.style.marginBottom = "0";
+        });
+      clone.querySelectorAll(".preview-line").forEach(function (el) {
+        el.style.minHeight = lhPx;
+        el.style.fontSize = fs;
+      });
+      clone
+        .querySelectorAll(".preview-line .example-text")
+        .forEach(function (el) {
+          el.style.fontSize = fs;
+          el.style.lineHeight = lhPx;
+        });
+      clone
+        .querySelectorAll(".preview-line .practice-zone")
+        .forEach(function (el) {
+          el.style.minHeight = lhPx;
+        });
+      clone
+        .querySelectorAll(".preview-line .baseline-guides")
+        .forEach(function (el) {
+          el.style.fontSize = fs;
+        });
+      // 讓 html2canvas 依 DOM 順序繪製時範例文字在底線上方：把 .row-content 移到 .baseline-guides 後面
+      clone.querySelectorAll(".preview-line").forEach(function (line) {
+        var content = line.querySelector(".row-content");
+        var guides = line.querySelector(".baseline-guides");
+        if (content && guides && content.nextSibling === guides) {
+          content.remove();
+          line.appendChild(content);
+        }
+      });
+    }
+
+    /** 將一頁複製到固定容器並轉成 canvas，避免在可捲動區外擷取導致第二頁以後空白 */
+    function capturePageToCanvas(pageEl) {
+      var wrap = document.createElement("div");
+      wrap.style.cssText =
+        "position:fixed;left:0;top:0;width:210mm;height:297mm;z-index:9999;pointer-events:none;";
+      document.body.appendChild(wrap);
+      var clone = pageEl.cloneNode(true);
+      clone.style.boxShadow = "none";
+      applyPreviewVarsToClone(clone);
+      wrap.appendChild(clone);
+      return new Promise(function (resolve, reject) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            html2pdf()
+              .set(opt)
+              .from(clone)
+              .toCanvas()
+              .get("canvas")
+              .then(function (canvas) {
+                document.body.removeChild(wrap);
+                resolve(canvas);
+              })
+              .catch(function (err) {
+                if (document.body.contains(wrap))
+                  document.body.removeChild(wrap);
+                reject(err);
+              });
+          });
+        });
+      });
+    }
+
+    /** 第一頁也用 clone 在固定容器內產生 PDF，避免從多頁預覽取第一枚時 html2pdf 多插一張空白頁 */
+    function createPdfFromFirstPage() {
+      var wrap = document.createElement("div");
+      wrap.style.cssText =
+        "position:fixed;left:0;top:0;width:210mm;height:297mm;z-index:9999;pointer-events:none;";
+      document.body.appendChild(wrap);
+      var firstClone = pageArray[0].cloneNode(true);
+      firstClone.style.boxShadow = "none";
+      applyPreviewVarsToClone(firstClone);
+      wrap.appendChild(firstClone);
+      return new Promise(function (resolve, reject) {
+        requestAnimationFrame(function () {
+          requestAnimationFrame(function () {
+            html2pdf()
+              .set(opt)
+              .from(firstClone)
+              .toPdf()
+              .get("pdf")
+              .then(function (pdf) {
+                if (document.body.contains(wrap))
+                  document.body.removeChild(wrap);
+                resolve(pdf);
+              })
+              .catch(function (err) {
+                if (document.body.contains(wrap))
+                  document.body.removeChild(wrap);
+                reject(err);
+              });
+          });
+        });
+      });
+    }
+
+    function runPdfExport() {
+      createPdfFromFirstPage()
+        .then(function (pdf) {
+          // html2pdf 有時會多產生一頁空白，只保留第一頁
+          while (pdf.getNumberOfPages && pdf.getNumberOfPages() > 1) {
+            pdf.deletePage(pdf.getNumberOfPages());
+          }
+          function addNextPage(index) {
+            if (index >= pageArray.length) {
+              pdf.save(opt.filename);
+              return;
+            }
+            return capturePageToCanvas(pageArray[index]).then(
+              function (canvas) {
+                var imgData = canvas.toDataURL("image/jpeg", 0.98);
+                pdf.addPage();
+                pdf.addImage(imgData, "JPEG", 0, 0, 210, 297);
+                return addNextPage(index + 1);
+              },
+            );
+          }
+          return addNextPage(1);
+        })
+        .catch(function (err) {
+          console.error("PDF 匯出失敗", err);
+          alert(
+            "無法匯出 PDF：" +
+              (err && err.message ? err.message : "請稍後再試"),
+          );
+        });
+    }
+
+    // 等字型就緒再擷取；跨站 webfont 另須 index.html link 加 crossorigin 才會進 canvas
+    var fontsReady =
+      document.fonts && document.fonts.ready
+        ? document.fonts.ready
+        : Promise.resolve();
+    fontsReady.then(runPdfExport).catch(runPdfExport);
+  });
+
+  var COMPACT_MQ = "(max-width: 900px)";
+  var previewFitWidth = true;
+  var deferredInstallPrompt = null;
+  var INSTALL_BANNER_KEY = "tai-gi-worksheet-install-banner-dismissed";
+
+  function isCompactLayout() {
+    return window.matchMedia(COMPACT_MQ).matches;
+  }
+
+  function closeSettingsSheet() {
+    if ($settingsPanel) $settingsPanel.classList.add("is-collapsed");
+    if ($settingsToggle) $settingsToggle.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("mobile-settings-open");
+    if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+  }
+
+  function closeMobileActions() {
+    document.body.classList.remove("mobile-actions-open");
+    if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "false");
+    if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = true;
+  }
+
+  function openMobileActions() {
+    closeSettingsSheet();
+    closeInsertMenu();
+    closeLoadTemplateMenu();
+    closeLoadTextbookMenu();
+    hideInstallBanner();
+    document.body.classList.add("mobile-actions-open");
+    if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "true");
+    if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = false;
+  }
+
+  function updatePreviewScale() {
+    var wrap = $previewWrap;
+    var pages = $worksheetPreview;
+    if (!wrap || !pages) return;
+    var shouldFit = isCompactLayout() && previewFitWidth;
+    if (!shouldFit) {
+      pages.style.transform = "";
+      wrap.style.width = "";
+      wrap.style.height = "";
+      wrap.classList.remove("is-scaled");
+      return;
+    }
+    var page = pages.querySelector(".worksheet-page");
+    if (!page) return;
+    var naturalW = page.offsetWidth;
+    var naturalH = pages.scrollHeight;
+    if (!naturalW || !naturalH) return;
+    var availW = ($main ? $main.clientWidth : window.innerWidth) - 8;
+    if (availW < 80) availW = window.innerWidth - 24;
+    var scale = availW / naturalW;
+    if (scale > 1) scale = 1;
+    if (scale < 0.12) scale = 0.12;
+    pages.style.transformOrigin = "top left";
+    pages.style.transform = "scale(" + scale + ")";
+    wrap.style.width = naturalW * scale + "px";
+    wrap.style.height = naturalH * scale + "px";
+    wrap.classList.add("is-scaled");
+  }
+
+  function setMobilePane(pane) {
+    var isPreview = pane === "preview";
+    document.body.classList.toggle("mobile-pane-preview", isPreview);
+    document.body.classList.toggle("mobile-pane-edit", !isPreview);
+    if ($tabEdit) {
+      $tabEdit.classList.toggle("is-active", !isPreview);
+      if (!isPreview) $tabEdit.setAttribute("aria-current", "page");
+      else $tabEdit.removeAttribute("aria-current");
+    }
+    if ($tabPreview) {
+      $tabPreview.classList.toggle("is-active", isPreview);
+      if (isPreview) $tabPreview.setAttribute("aria-current", "page");
+      else $tabPreview.removeAttribute("aria-current");
+    }
+    closeMobileActions();
+    closeSettingsSheet();
+    closeInsertMenu();
+    closeLoadTemplateMenu();
+    closeLoadTextbookMenu();
+    if (isPreview) {
+      requestAnimationFrame(function () {
+        updatePreviewScale();
+      });
+    }
+  }
+
+  function syncFitToggleLabel() {
+    if (!$previewFitToggle) return;
+    $previewFitToggle.setAttribute(
+      "aria-pressed",
+      previewFitWidth ? "true" : "false",
+    );
+    $previewFitToggle.textContent = previewFitWidth ? "適寬" : "原寸";
+  }
+
+  function isStandaloneDisplay() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function isIosDevice() {
+    return (
+      /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    );
+  }
+
+  function hideInstallBanner() {
+    if ($installBanner) $installBanner.hidden = true;
+  }
+
+  function updateInstallButtonVisibility() {
+    var standalone = isStandaloneDisplay();
+    var canPrompt = !!deferredInstallPrompt;
+    var show = !standalone && (canPrompt || isIosDevice() || isCompactLayout());
+    if ($installAppBtn) $installAppBtn.hidden = !show;
+    if (standalone) hideInstallBanner();
+  }
+
+  function openInstallHelp() {
+    if (!$installHelpModal) return;
+    $installHelpModal.hidden = false;
+    document.body.classList.add("is-modal-open");
+  }
+
+  function closeInstallHelp() {
+    if (!$installHelpModal) return;
+    $installHelpModal.hidden = true;
+    if (
+      $infoModal &&
+      $infoModal.hidden &&
+      !document.body.classList.contains("mobile-actions-open")
+    ) {
+      document.body.classList.remove("is-modal-open");
+    }
+  }
+
+  function promptInstall() {
+    closeMobileActions();
+    if (deferredInstallPrompt && typeof deferredInstallPrompt.prompt === "function") {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function () {
+        deferredInstallPrompt = null;
+        updateInstallButtonVisibility();
+        hideInstallBanner();
+      });
+      return;
+    }
+    openInstallHelp();
+  }
+
+  if ($moreActionsBtn) {
+    $moreActionsBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (document.body.classList.contains("mobile-actions-open")) {
+        closeMobileActions();
+      } else {
+        openMobileActions();
+      }
+    });
+  }
+  var headerActionsEl = document.getElementById("headerActions");
+  if (headerActionsEl) {
+    headerActionsEl.addEventListener("click", function (e) {
+      e.stopPropagation();
+    });
+  }
+  if ($mobileActionsBackdrop) {
+    $mobileActionsBackdrop.addEventListener("click", closeMobileActions);
+  }
+  if ($settingsBackdrop) {
+    $settingsBackdrop.addEventListener("click", closeSettingsSheet);
+  }
+  if ($tabEdit) {
+    $tabEdit.addEventListener("click", function () {
+      setMobilePane("edit");
+    });
+  }
+  if ($tabPreview) {
+    $tabPreview.addEventListener("click", function () {
+      setMobilePane("preview");
+    });
+  }
+  if ($previewFitToggle) {
+    syncFitToggleLabel();
+    $previewFitToggle.addEventListener("click", function () {
+      previewFitWidth = !previewFitWidth;
+      syncFitToggleLabel();
+      updatePreviewScale();
+    });
+  }
+  if ($mobileExportPdf && $exportPdf) {
+    $mobileExportPdf.addEventListener("click", function () {
+      $exportPdf.click();
+    });
+  }
+
+  if ($installAppBtn) {
+    $installAppBtn.addEventListener("click", promptInstall);
+  }
+  if ($installBannerBtn) {
+    $installBannerBtn.addEventListener("click", promptInstall);
+  }
+  if ($installBannerDismiss) {
+    $installBannerDismiss.addEventListener("click", function () {
+      try {
+        localStorage.setItem(INSTALL_BANNER_KEY, "1");
+      } catch (e) {}
+      hideInstallBanner();
+    });
+  }
+  if ($installHelpClose) {
+    $installHelpClose.addEventListener("click", closeInstallHelp);
+  }
+  if ($installHelpModal) {
+    var installHelpBackdrop = $installHelpModal.querySelector(
+      "[data-install-help-close]",
+    );
+    if (installHelpBackdrop) {
+      installHelpBackdrop.addEventListener("click", closeInstallHelp);
+    }
+  }
+
+  window.addEventListener("beforeinstallprompt", function (evt) {
+    evt.preventDefault();
+    deferredInstallPrompt = evt;
+    updateInstallButtonVisibility();
+    var dismissed = false;
+    try {
+      dismissed = localStorage.getItem(INSTALL_BANNER_KEY) === "1";
+    } catch (e) {}
+    if (
+      !dismissed &&
+      !isStandaloneDisplay() &&
+      isCompactLayout() &&
+      $installBanner
+    ) {
+      $installBanner.hidden = false;
+    }
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferredInstallPrompt = null;
+    hideInstallBanner();
+    updateInstallButtonVisibility();
+  });
+
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key !== "Escape") return;
+    if ($installHelpModal && !$installHelpModal.hidden) {
+      evt.preventDefault();
+      closeInstallHelp();
+      return;
+    }
+    if (document.body.classList.contains("mobile-actions-open")) {
+      evt.preventDefault();
+      closeMobileActions();
+      return;
+    }
+    if (document.body.classList.contains("mobile-settings-open")) {
+      evt.preventDefault();
+      closeSettingsSheet();
+    }
+  });
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (!isCompactLayout()) {
+        closeMobileActions();
+        document.body.classList.remove("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+      }
+      updatePreviewScale();
+      updateInstallButtonVisibility();
+    }, 80);
+  });
+
+  setMobilePane("edit");
+  updateInstallButtonVisibility();
+
+  if (!isStandaloneDisplay() && isIosDevice() && isCompactLayout()) {
+    var iosDismissed = false;
+    try {
+      iosDismissed = localStorage.getItem(INSTALL_BANNER_KEY) === "1";
+    } catch (e) {}
+    if (!iosDismissed && $installBanner) {
+      window.setTimeout(function () {
+        if (!isStandaloneDisplay()) $installBanner.hidden = false;
+      }, 2500);
+    }
+  }
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      if (location.protocol !== "http:" && location.protocol !== "https:")
+        return;
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
+
+  /** 沒有 LocalStorage 時改載入 intro 範例（操作介紹）；完成後才開始定期存檔，避免先寫入預設空白狀態 */
+  function finishInitialLoad() {
+    undoStack = [];
+    redoStack = [];
+    updateHistoryButtonState();
+    lastPersistedJson = JSON.stringify(getSnapshot());
+    setInterval(persistProgressIfChanged, 5000);
+  }
+
+  if (loadProgressFromLocalStorage()) {
+    finishInitialLoad();
+  } else {
+    fetch("templates/intro.json")
+      .then(function (r) {
+        if (!r.ok) throw new Error(r.statusText);
+        return r.json();
+      })
+      .then(function (data) {
+        isApplyingHistory = true;
+        applyImportedSettings(data);
+        isApplyingHistory = false;
+        finishInitialLoad();
+      })
+      .catch(function () {
+        renderItemList();
+        renderPreview();
+        finishInitialLoad();
+      });
+  }
+})();

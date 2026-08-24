@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "type": "content",
+      "content": "# 變調的時機、基本原則\n\n## 標記本調的法度\n主流的教材通常慣勢用 `#` 寫佇音節後壁，代表**彼个音節唸本調**，**賰的攏愛變調**。\n\n## 語句內底變調的基本原則：\n- 句尾讀本調\n- 一句話的主詞尾字讀本調\n- 人稱代名詞若是做主詞，讀變調\n\n## 主詞尾字佮句尾讀本調的例\n- ==Tâi-uân-lâng#== tsin ióng-kám#.（台灣人真勇敢。）\n- ==Hit ê lâng#== tsin iân-tâu#.（彼个人真緣投。）\n- ==Tshun-kiau#== kah Tsì-bîng# kóng tiān-uē#. （春嬌佮志明講電話。）",
+      "id": "item-159"
+    },
+    {
+      "description": "共下跤的語句標正確的本調記號",
+      "exampleText": "A-bîng ē-hiáu siá Tâi-lô.（阿明會曉寫台羅。）",
+      "lineCount": 2,
+      "id": "item-162"
+    },
+    {
+      "type": "content",
+      "content": "## 人稱代名詞若是做主詞，讀變調\n台語的人稱代名詞：\n- 第一人稱：guá（我）、gún/guán（阮）、lán（咱）\n- 第二人稱：lí（你）、lín（恁）\n- 第三人稱：i（伊）、in（𪜶）\n\n頭前的三句話若是換做人稱代名詞，\n- ==Lí== tsin ióng-kám#.（你真勇敢。）\n- ==I== tsin iân-tâu#.（伊真緣投。）\n- ==Guá== kah Tsì-bîng# kóng tiān-uē#.（我佮志明講電話。）\n\n代表某乜角色的「人 lâng」嘛會當看做人稱代名詞，做主詞嘛愛變調；若是當做「人類」的意義愛讀本調。\n- Lâng bô siūnn-beh khì.（人無想欲去）→「人」代表某乜角色，讀變調\n- Lâng# nn̄g kha#, tsînn# sì kha#.（人兩跤，錢四跤）→「人」代表「人類」，讀本調",
+      "id": "item-161"
+    },
+    {
+      "description": "練習：共下跤的語句標正確的本調記號",
+      "exampleText": "Guá ē-hiáu siá Tâi-lô.（我會曉寫台羅。）",
+      "lineCount": 2,
+      "id": "item-163"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-165"
+    },
+    {
+      "type": "content",
+      "content": "## 動詞佇句中愛會記得變調\n台語無輾轉的人，這種情境定定會唸作本調\n- Guá tsin ==kah-ì#==.（我真佮意。）\n- Guá tsin ==kah-ì== Tâi-gí-kua.（我真佮意台語歌）\n- Guá bô ==ài#==.（我無愛。）\n- Guá bô ==ài== tsia̍h-pn̄g.（我無愛食飯。）\n\n例外：後壁若是句尾人稱代名詞，動詞讀本調，人稱代名詞讀輕聲  \n（後一个教材會詳細講輕聲）\n- Gua tsin ==kah-ì#--lí==.（我真佮意你。）\n- Guá bô ==ài#--i==.（我無愛伊。）",
+      "id": "item-164"
+    },
+    {
+      "description": "練習：共下跤的語句標正確的本調記號",
+      "exampleText": "Tse sī guá ê tsú-tiunn. （這是我的主張。）\n\nGuá tsú-tiunn gí-giân pênn-khuân.（我主張語言平權。）",
+      "lineCount": 4,
+      "id": "item-166"
+    },
+    {
+      "type": "content",
+      "content": "## 變調的例外：主謂構詞結構\n延伸閱讀：[台語語法冷知識](https://www.facebook.com/TaiwaneseSyntax/posts/pfbid0JqCjumGuTd7qQwj82eR59kyPXjWxXGW7r4fi3MksRTsczCBRxHWDt55Pj77wgtJwl)  \n一般的詞彙通常是**詞尾讀本調，賰的讀變調**，毋過「主謂構詞結構」是一種例外。「主謂構詞結構」就是類似「天光 thinn#-kng#」、「地動 tē#-tāng#」這類的詞，攏是「一个主體+描述」的結構。\n- 這種語詞結構本身袂輸就是一句話，頭前的音節會唸本調。\n- 嘛無一定就會按呢，有例外。因為佇母語者的頭殼內底漸漸仔共認定做一个詞，毋是句。\n",
+      "id": "item-168"
+    },
+    {
+      "description": "主謂構詞例詞",
+      "exampleText": "tē#-tāng#（地動）|thinn#-kng#（天光）\nthâu#-thiànn#（頭疼）|tshiú#-tsiān#（手賤）",
+      "lineCount": 2,
+      "id": "item-169"
+    },
+    {
+      "description": "主謂構詞的例外",
+      "exampleText": "tshuì-ta（喙焦）|bí-phang（米芳）\nhīnn-khang-khin（耳空輕）|kha-tòng（跤擋）",
+      "lineCount": 2,
+      "id": "item-170"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-171"
+    },
+    {
+      "type": "content",
+      "content": "## 變調的精差，致使主詞無仝，語義無仝\n透過佇無仝所在變調，會使影響一句話的主語，造成語義的改變。\n### 例：台北人車真濟（[來源](https://www.instagram.com/p/CxksgC1PfUF/?hl=zh-tw&img_index=9)）\n - Tâi-==pak#== ==lâng tshia#== tsin tsē#\n    - 「台北」有真濟「人」佮「車」\n- Tâi-pak-==lâng#== ==tshia#== tsin tsē#\n### 例：攏總兩百箍\n- Lóng-==tsóng== nn̄g-pah-khoo#\n    - 「兩百箍」是這句話的主體，「攏總」是修飾成分讀變調，代表**逐項攏是 200 箍**\n- Lóng-==tsóng#== nn̄g-pah-khoo#\n    - 「攏總」是這句話的主體，兩百箍是針對「攏總」咧講，代表**加加起來愛 200 箍**",
+      "id": "item-172"
+    },
+    {
+      "type": "content",
+      "content": "## 所有格：ê（的）\n- 「的 ê」頭前的名詞尾字讀本調\n- 頭前若是**人稱代名詞讀變調**\n\n例：\n- Tâi-uân# ê bī-lâi#（台灣的未來）\n- Guá ê bī-lâi#（我的未來）\n### 無仝的語義認定\n下跤的例若是「一般名詞」 ，攏是本調，兩種語義讀起來仝款；若是人稱代名詞，所有格唸變調，形容詞唸本調。\n- 佮意春嬌的囡仔（唸起來仝款，語義愛看頂下文） \n    - [Kah-ì Tshun-==kiau#== ê] gín-á# → 有一个囡仔佮意春嬌\n    - Kah-ì [Tshun-==kiau#== ê] gín-á# → 有人佮意「春嬌的囡仔」\n- 佮意我的囡仔（一个本調一个變調）\n    - Kah-ì ==guá#== ê gín-á#. → 有一个囡仔佮意我\n    - Kah-ì ==guá== ê gín-á#. → 有人佮意「我的囡仔」",
+      "id": "item-174"
+    },
+    {
+      "description": "練習：標記無仝的變調位置，予下跤這句話有無仝的語義。",
+      "exampleText": "Sann uī tāi-piáu tsham-ka huē-gī.（三位代表參加會議）",
+      "lineCount": 3,
+      "id": "item-175"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-176"
+    },
+    {
+      "type": "content",
+      "content": "## 名詞組的變調\n- 多音節名詞+單音節名詞的構詞 → 一定愛變調\n- 多音節名詞+多音節名詞→自由變體\n\n### 多音節名詞+單音節名詞（類詞綴）\n台語有真濟詞後壁攏會當加上一个單音節的名詞變做新的詞，比論講任何的物件若是變做一个學問，就會當講做「XX學」；任何的地區蹛的人攏會當叫做「XX人」；任何的物件若是開一間店就會當叫做「XX店」。\n\n這个詞只要是較生份，台語無輾轉的人定定會袂記得變調。毋過對母語者來講**一定愛變調**。",
+      "id": "item-177"
+    },
+    {
+      "description": "練習：請比較下跤的語詞，並且家己造一寡仝款類型的詞，共實際的聲調佮變調想予清楚",
+      "exampleText": "ba̍k-kiànn（目鏡）|ba̍k-kiànn-jîn（目鏡仁）\nī-sìng（異性）｜ī-sìng-luân（異性戀）\nsuán-kí（選舉）｜suán-kí-ji̍t（選舉日）\nian-tsi（胭脂）｜ian-tsi-tiàm（胭脂店）\n",
+      "lineCount": 6,
+      "id": "item-178"
+    },
+    {
+      "type": "content",
+      "content": "### 多音節名詞+多音節名詞\n是自由變體，基本上有下跤的原則：\n- 較捷講的詞傾向讀變調\n- 較生份的詞傾向讀本調\n- 五个音節以上的長詞組通常會逐組詞尾讀本調\n\n※ 有爭議：部份較保守的教材佮老師的觀點會認為這種嘛是全部攏愛變調。\n\n- 較捷講的詞：\n    - tsìng-tī jîn-bu̍t#(政治人物)\n    - bīn-tsú kok-ka#(民主國家)\n- 較生份的詞：\n    - Hōng-hông(#) hong-thai(鳳凰風颱)\n    - Tsiàn-tàu(#) kan-lo̍k(戰鬥干樂)\n- 五音節以上的長詞組：\n    - Gí-giân(#) lîng-li̍k(#) jīn-tsìng(#) khó-tshì#\n（語言能力認證考試）\n    - Tâi-uân(#) Hú-siânn(#) Kàu-huē-pò#\n（台灣府城教會報）\n",
+      "id": "item-179"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-180"
+    },
+    {
+      "type": "content",
+      "content": "## 四音節語詞的變調\n一般的四音節語詞通常是尾字本調，頭前攏變調，毋過嘛有例外：\n### 主謂結構（主詞尾字讀本調）\n- hue#-bē-tiâu-ki#(花袂牢枝)\n- ok-lâng# bô-tánn#(惡人無膽)\n- sai-gû#-tsiò-kak#(犀牛照角)\n### 主謂主謂（四个字攏本調）\n- hong#-tiâu#-ú#-sūn#(風調雨順)\n- sim#-kông#-hué#-to̍h#(心狂火著)\n### 並列結構（2+2）\n- khì-siong#-kái-ut#(去傷解鬱)\n- thâi-ke#-kà-kâu#(刣雞教猴)\n- khang-tshuì#-pōo-tsi̍h#(空喙哺舌)\n- tinn-giân#-bi̍t-gí#(甜言蜜語)\n- siān-lâm#-sìn-lí#(善男信女)",
+      "id": "item-181"
+    },
+    {
+      "description": "練習：請佇教典揣著下跤的四字詞，根據音檔標記伊的本調佮變調",
+      "exampleText": "thinn-huán-tē-luān（天反地亂）\nuàn-thinn-uàn-tē（怨天怨地）\npuânn-suann-kuè-niá（盤山過嶺）\nkū-á-thàm-pâng（舅仔探房）",
+      "lineCount": 4,
+      "id": "item-182"
+    },
+    {
+      "description": "筆記、自由練習",
+      "exampleText": "",
+      "lineCount": 7,
+      "id": "item-183"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-184"
+    },
+    {
+      "type": "content",
+      "content": "## 練習參考答案\n\n1  \n==A-bîng#== ē-hiáu siá Tâi-lô#.  \n\n2  \n==Guá== ē-hiáu siá Tâi-lô#.  \n\n3  \n- Tse# sī guá ê tsú-==tiunn#==. （這是我的主張。）  \n- Guá tsú-==tiunn== gí-giân pênn-khuân#.（我主張語言平權。）\n\n6  \n- Sann ==uī#== tāi-piáu tsham-ka huē-gī#.（三位代表參加會議）→==三位==是主詞，==代表==是動詞\n- Sann uī tāi-==piáu#== tsham-ka huē-gī#.（三位代表參加會議）→==三位代表==是主詞\n\n8  \n- thinn#-huán#-tē#-luān#（天反地亂）→主謂主謂，四字攏本調\n- uàn-thinn#-uàn-tē#（怨天怨地）→並列結構 2+2\n- puânn-suann#-kuè-niá#（盤山過嶺） →並列結構 2+2\n- kū-á#-thàm-pâng#（舅仔探房）→主謂結構，==舅仔==是主詞",
+      "id": "item-185"
+    }
+  ],
+  "lineStyle": "single",
+  "lineSpacingDelta": 0,
+  "fontSize": 24,
+  "pageHeader": "4. 變調的時機、基本原則",
+  "showPageNumbers": true,
+  "autoItemNumbers": true
+}

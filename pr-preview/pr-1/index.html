@@ -1,0 +1,554 @@
+<!doctype html>
+<html lang="und-hani">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#5c8273" />
+    <meta name="color-scheme" content="light" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="台語寫字" />
+    <meta
+      name="description"
+      content="編輯會當列印的 A4 台語文書寫練習單，輸出 PDF。"
+    />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png" />
+    <link rel="apple-touch-icon" href="icons/apple-touch-icon.png" />
+    <title>台語寫字學習單編輯器</title>
+    <!-- crossorigin 必須：html2canvas 繪到 canvas 時，跨站字體須為 CORS 模式載入才會用，否則 PDF 會落回備援字型 -->
+    <link
+      href="https://font.emtech.cc/css/GenKiGothicTW/500"
+      rel="stylesheet"
+      crossorigin="anonymous"
+    />
+    <link rel="stylesheet" href="styles.css?v=1.1.3" />
+  </head>
+  <body>
+    <div class="app">
+      <header class="header">
+        <div class="header-left">
+          <div class="header-title-row">
+            <h1>台語寫字學習單編輯器</h1>
+            <button
+              type="button"
+              id="infoButton"
+              class="btn-info-icon"
+              aria-label="關於這个網頁的說明與更新資訊"
+            >
+              ⓘ
+            </button>
+          </div>
+          <p class="subtitle">
+            設定欲練習的文字、輸出 pdf 檔案了後共印出來練習
+          </p>
+        </div>
+        <button
+          type="button"
+          id="moreActionsBtn"
+          class="btn-more-actions"
+          aria-label="其他功能"
+          aria-expanded="false"
+          aria-haspopup="true"
+          aria-controls="headerActions"
+        >
+          <svg
+            class="btn-more-actions-svg"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            aria-hidden="true"
+          >
+            <circle cx="5" cy="12" r="2" />
+            <circle cx="12" cy="12" r="2" />
+            <circle cx="19" cy="12" r="2" />
+          </svg>
+        </button>
+        <div class="header-actions" id="headerActions">
+          <div class="dropdown-wrap header-template-dropdown">
+            <button
+              type="button"
+              id="loadTemplateBtn"
+              class="btn btn-settings"
+              aria-label="載入模板"
+              aria-expanded="false"
+              aria-haspopup="true"
+            >
+              模板
+            </button>
+          </div>
+          <div class="dropdown-wrap header-textbook-dropdown">
+            <button
+              type="button"
+              id="loadTextbookBtn"
+              class="btn btn-settings"
+              aria-label="載入教材"
+              aria-expanded="false"
+              aria-haspopup="true"
+            >
+              建中的教材
+            </button>
+          </div>
+          <button type="button" id="importSettings" class="btn btn-settings">
+            匯入設定
+          </button>
+          <input
+            type="file"
+            id="importSettingsFile"
+            accept=".json,application/json"
+            hidden
+          />
+          <button type="button" id="exportSettings" class="btn btn-settings">
+            匯出設定
+          </button>
+          <button
+            type="button"
+            id="installAppBtn"
+            class="btn btn-settings"
+            hidden
+          >
+            安裝
+          </button>
+          <button type="button" id="exportPdf" class="btn btn-export">
+            輸出 PDF
+          </button>
+        </div>
+      </header>
+
+      <div
+        id="mobileActionsBackdrop"
+        class="mobile-sheet-backdrop"
+        hidden
+      ></div>
+      <div id="settingsBackdrop" class="mobile-sheet-backdrop" hidden></div>
+      <ul
+        id="loadTemplateMenu"
+        class="insert-menu textbook-menu"
+        role="menu"
+        hidden
+      ></ul>
+      <ul
+        id="loadTextbookMenu"
+        class="insert-menu textbook-menu"
+        role="menu"
+        hidden
+      ></ul>
+      <ul id="insertMenu" class="insert-menu" role="menu" hidden>
+        <li role="none">
+          <button type="button" role="menuitem" id="insertContent">
+            ＋ 段落文字
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" role="menuitem" id="insertPageBreak">
+            ＋ 分頁標記
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" role="menuitem" id="insertCustomImage">
+            ＋ 自訂圖片
+          </button>
+        </li>
+      </ul>
+
+      <aside class="sidebar">
+        <div class="sidebar-toolbar" role="toolbar" aria-label="側欄工具">
+          <button
+            type="button"
+            id="settingsToggle"
+            class="sidebar-icon-btn"
+            aria-label="設定"
+            aria-expanded="false"
+            aria-controls="settingsContent"
+            title="設定"
+          >
+            <svg
+              class="sidebar-icon-btn-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path
+                d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"
+              />
+            </svg>
+          </button>
+          <button
+            type="button"
+            id="undoButton"
+            class="sidebar-icon-btn"
+            aria-label="上一步"
+            disabled
+            title="上一步"
+          >
+            <svg
+              class="sidebar-icon-btn-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M3 7v6h6" />
+              <path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13" />
+            </svg>
+          </button>
+          <button
+            type="button"
+            id="redoButton"
+            class="sidebar-icon-btn"
+            aria-label="下一步"
+            disabled
+            title="下一步"
+          >
+            <svg
+              class="sidebar-icon-btn-svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              aria-hidden="true"
+            >
+              <path d="M21 7v6h-6" />
+              <path d="M3 17a9 9 0 0 1 9-9 9 9 0 0 1 6 2.3l3 2.7" />
+            </svg>
+          </button>
+        </div>
+
+        <section class="panel settings-panel is-collapsed" id="settingsPanel">
+          <div id="settingsContent" class="settings-content">
+            <div class="settings-inner">
+              <div class="panel">
+                <h2>頁首</h2>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="pageHeader"
+                    class="page-header-input"
+                    placeholder="顯示佇每一頁正手爿頂面的文字"
+                    maxlength="80"
+                  />
+                </div>
+              </div>
+              <div class="panel">
+                <h2>寸尺</h2>
+                <div class="slider-group">
+                  <input
+                    type="range"
+                    id="fontSize"
+                    min="16"
+                    max="40"
+                    value="24"
+                    step="2"
+                  />
+                  <span id="fontSizeValue" class="slider-value">24px</span>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h2>逝距</h2>
+                <div class="slider-group">
+                  <input
+                    type="range"
+                    id="lineSpacing"
+                    min="-20"
+                    max="20"
+                    value="0"
+                    step="1"
+                  />
+                  <span id="lineSpacingValue" class="slider-value">0.00</span>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h2>底線</h2>
+                <div class="radio-group">
+                  <label class="radio-label">
+                    <input
+                      type="radio"
+                      name="lineStyle"
+                      value="single"
+                      checked
+                    />
+                    <span>一條線</span>
+                  </label>
+                  <label class="radio-label">
+                    <input type="radio" name="lineStyle" value="triple" />
+                    <span>三條線</span>
+                  </label>
+                </div>
+              </div>
+
+              <div class="panel">
+                <h2>版面</h2>
+                <div class="checkbox-stack">
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="showPageNumbers" />
+                    <span>頁碼</span>
+                  </label>
+                  <label class="checkbox-label">
+                    <input type="checkbox" id="autoItemNumbers" />
+                    <span>項目編號</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel item-list-panel">
+          <h2>練習項目</h2>
+          <div class="add-item-row">
+            <button
+              type="button"
+              id="addItem"
+              class="btn btn-primary btn-add-item"
+            >
+              ＋ 添新的項目
+            </button>
+            <div class="dropdown-wrap">
+              <button
+                type="button"
+                id="insertMenuToggle"
+                class="btn btn-insert-menu-toggle"
+                aria-label="插入選單"
+                aria-expanded="false"
+                aria-haspopup="true"
+              >
+                <span class="dropdown-arrow" aria-hidden="true"></span>
+              </button>
+            </div>
+          </div>
+          <div id="itemList" class="item-list"></div>
+        </section>
+      </aside>
+
+      <main class="main">
+        <div class="mobile-preview-toolbar">
+          <button
+            type="button"
+            id="previewFitToggle"
+            class="btn btn-settings"
+            aria-pressed="true"
+          >
+            適寬
+          </button>
+          <button type="button" id="mobileExportPdf" class="btn btn-export">
+            輸出 PDF
+          </button>
+        </div>
+        <div class="preview-wrap">
+          <div id="worksheetPreview" class="worksheet-pages"></div>
+        </div>
+      </main>
+    </div>
+
+    <div class="info-modal" id="infoModal" hidden>
+      <div class="info-modal-backdrop" data-info-modal-close></div>
+      <div
+        class="info-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="infoModalTitle"
+      >
+        <button
+          type="button"
+          id="infoModalClose"
+          class="info-modal-close"
+          aria-label="關閉說明視窗"
+        >
+          ×
+        </button>
+        <h2 id="infoModalTitle">有關台語寫字學習單編輯器</h2>
+        <div class="info-modal-section">
+          <p>
+            這个網頁是
+            <a href="https://kiantiong.com/" target="_blank"
+              >陳建中 Tân Kiàn-tiong</a
+            >
+            提供，無廣告、免錢、無任何的追蹤器，歡迎各位朋友加利用。
+          </p>
+          <p>
+            若有任何建議抑是問題欲回報，歡迎寫批去
+            <a href="mailto:kiantiong7235@gmail.com" target="_blank"
+              >kiantiong7235@gmail.com</a
+            >
+            佮建中聯絡。
+          </p>
+          <p>
+            建中的其他家私會當參考
+            <a
+              href="https://kiantiong.com/series/%E5%BB%BA%E4%B8%AD%E5%AF%A6%E7%94%A8%E5%B7%A5%E5%85%B7/"
+              target="_blank"
+              >建中實用工具</a
+            >
+            ，你若願意支持建中用愛發電的事工，歡迎
+            <a href="https://kiantiong.bobaboba.me/" target="_blank">寄付</a
+            >，請建中啉涼的：）
+          </p>
+          <h3>功能介紹</h3>
+          <ul>
+            <li>
+              佇「編輯」設定學習單的內容，佇「預覽」看排版結果（電腦版是倒手爿編輯、正手爿預覽）。
+            </li>
+            <li>字的寸尺、底線樣式、逝距隨在你撨。</li>
+            <li>揤「輸出 PDF」通輸出會當印出來練習的檔案。</li>
+            <li>
+              通匯入／匯出設定檔，共家己的學習單設定記起來，嘛通互相分享。
+            </li>
+            <li>
+              「段落文字」適合寫較長篇的文字，嘛有支援 Markdown 語法；通過
+              <code>==文字==</code> 標示螢光筆重點。
+            </li>
+            <li>「分頁標記」通指定系統佇佗位換後一頁。</li>
+            <li>「模板」有預設的學習單版型，通直接載入使用抑是改內容。</li>
+            <li>
+              「建中的教材」有
+              <a href="https://kiantiong.com/blog/taigibun101_2026/"
+                >建中的台語文入門課</a
+              >
+              的紙本教材，歡迎直接提去用抑是修改。
+            </li>
+            <li>
+              「字詞見本」通佇仝一逝用「｜」抑是「|」分欄位：一個分兩欄、兩个分三欄
+            </li>
+            <li>通安裝到主畫面抑是電腦桌面，像 app 仝款開啟使用。</li>
+          </ul>
+        </div>
+        <div class="info-modal-section">
+          <h3>2026.8.24</h3>
+          <ul>
+            <li>手機介面：編輯／預覽分頁、適寬預覽、項目上下調整</li>
+            <li>支援安裝到主畫面／桌面（PWA）</li>
+          </ul>
+          <h3>2026.4.19</h3>
+          <ul>
+            <li>段落文字：支援 Markdown 的 <code>==螢光筆==</code> 語法</li>
+          </ul>
+          <h3>2026.4.1</h3>
+          <ul>
+            <li>字詞見本：會使用「｜」佮「|」兩个符號分欄位</li>
+            <li>建中的教材增加「2. 台羅的拼寫細節」</li>
+          </ul>
+          <h3>2026.3.25</h3>
+          <ul>
+            <li>增加「頂一步」、「後一步」功能</li>
+            <li>增加「模版」選單，有一寡初步的模版通選</li>
+            <li>見本文字這馬嘛會當換逝矣</li>
+          </ul>
+          <h3>2026.3.16 初版本</h3>
+          <ul>
+            <li>網頁上架</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <nav class="mobile-tabbar" aria-label="主要畫面切換">
+      <button
+        type="button"
+        id="tabEdit"
+        class="mobile-tab is-active"
+        aria-current="page"
+      >
+        <svg
+          class="mobile-tab-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M12 20h9" />
+          <path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z" />
+        </svg>
+        <span>編輯</span>
+      </button>
+      <button type="button" id="tabPreview" class="mobile-tab">
+        <svg
+          class="mobile-tab-icon"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+          aria-hidden="true"
+        >
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8Z" />
+          <path d="M14 2v6h6" />
+          <path d="M8 13h8" />
+          <path d="M8 17h5" />
+        </svg>
+        <span>預覽</span>
+      </button>
+    </nav>
+
+    <div class="install-banner" id="installBanner" hidden>
+      <p class="install-banner-text">
+        通安裝到主畫面，像 app 仝款開啟使用
+      </p>
+      <div class="install-banner-actions">
+        <button type="button" id="installBannerBtn" class="btn btn-primary">
+          安裝
+        </button>
+        <button
+          type="button"
+          id="installBannerDismiss"
+          class="btn btn-settings"
+        >
+          閉起來
+        </button>
+      </div>
+    </div>
+
+    <div class="info-modal" id="installHelpModal" hidden>
+      <div class="info-modal-backdrop" data-install-help-close></div>
+      <div
+        class="info-modal-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="installHelpTitle"
+      >
+        <button
+          type="button"
+          id="installHelpClose"
+          class="info-modal-close"
+          aria-label="關閉安裝說明"
+        >
+          ×
+        </button>
+        <h2 id="installHelpTitle">安裝到主畫面</h2>
+        <div class="info-modal-section">
+          <p>iPhone／iPad 請用 Safari 開啟這个網頁，隨後：</p>
+          <ol>
+            <li>揤底部分享鈕（方塊頂面一支箭）。</li>
+            <li>向下搝，選「加到主畫面」。</li>
+            <li>揤「加入」。了後就會當像 app 仝款開啟。</li>
+          </ol>
+          <p>
+            電腦版 Chrome／Edge 通佇網址列正手爿的安裝圖示，抑是選單內底的「安裝應用程式」。
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
+    <script src="app.js?v=1.1.3"></script>
+  </body>
+</html>

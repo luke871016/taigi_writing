@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "description": "寫字練習",
+      "exampleText": "",
+      "lineCount": 3
+    }
+  ],
+  "lineStyle": "triple",
+  "lineSpacingDelta": 0,
+  "fontSize": 24,
+  "pageHeader": ""
+}
