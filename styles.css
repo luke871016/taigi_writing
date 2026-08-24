@@ -1294,6 +1294,15 @@ a {
     height: var(--header-height);
   }
 
+  /* 功能面板在 header 內，需提高 header 層級，否則遮罩會擋到點擊 */
+  body.mobile-actions-open .header {
+    z-index: 42;
+  }
+
+  body.mobile-settings-open .sidebar {
+    z-index: 42;
+  }
+
   .header-left {
     flex: 1;
     min-width: 0;
@@ -1444,6 +1453,12 @@ a {
     min-height: 2.75rem;
   }
 
+  .sidebar-toolbar {
+    position: relative;
+    z-index: 38;
+    background: var(--paper);
+  }
+
   .item-move-btns {
     display: flex;
   }
@@ -1490,7 +1505,7 @@ a {
     position: fixed;
     left: 0.75rem;
     right: 0.75rem;
-    top: calc(var(--header-height) + 0.5rem);
+    top: calc(var(--header-height) + 4.2rem);
     bottom: calc(var(--mobile-tabbar-height) + 0.5rem);
     z-index: 35;
     margin: 0;

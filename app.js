@@ -1686,6 +1686,11 @@
     if (!$insertMenu || !$insertMenuToggle) return;
     $insertMenu.hidden = false;
     $insertMenuToggle.setAttribute("aria-expanded", "true");
+    if (isCompactLayout()) {
+      $insertMenu.style.top = "";
+      $insertMenu.style.left = "";
+      return;
+    }
     var rect = $insertMenuToggle.getBoundingClientRect();
     var menuTop = rect.bottom + 4;
     var menuLeft = rect.left;
@@ -1800,6 +1805,11 @@
     $loadTemplateMenu.hidden = false;
     $loadTemplateBtn.setAttribute("aria-expanded", "true");
     closeMobileActions();
+    if (isCompactLayout()) {
+      $loadTemplateMenu.style.top = "";
+      $loadTemplateMenu.style.left = "";
+      return;
+    }
     var rect = $loadTemplateBtn.getBoundingClientRect();
     $loadTemplateMenu.style.top = rect.bottom + 4 + "px";
     $loadTemplateMenu.style.left = rect.left + "px";
@@ -1865,6 +1875,11 @@
     $loadTextbookMenu.hidden = false;
     $loadTextbookBtn.setAttribute("aria-expanded", "true");
     closeMobileActions();
+    if (isCompactLayout()) {
+      $loadTextbookMenu.style.top = "";
+      $loadTextbookMenu.style.left = "";
+      return;
+    }
     var rect = $loadTextbookBtn.getBoundingClientRect();
     $loadTextbookMenu.style.top = rect.bottom + 4 + "px";
     $loadTextbookMenu.style.left = rect.left + "px";
