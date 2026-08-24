@@ -375,6 +375,53 @@ a {
   box-shadow: 0 0 0 2px rgba(92, 130, 115, 0.2);
 }
 
+.settings-hint {
+  margin: 0 0 0.5rem;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: #666;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.settings-hint a {
+  color: var(--accent);
+}
+
+.visually-hidden-file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.item-image-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.6rem;
+  margin-bottom: 0.4rem;
+}
+
+.btn-pick-image {
+  width: auto;
+  padding: 0.35rem 0.7rem;
+  font-size: 0.85rem;
+}
+
+.item-image-status {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #666;
+  flex: 1 1 10rem;
+  min-width: 0;
+}
+
 .page-header-input::placeholder {
   color: #999;
 }
@@ -1677,13 +1724,10 @@ a {
     padding-top: 0;
   }
 
-  .insert-menu {
-    left: 0.75rem !important;
-    right: 0.75rem;
-    width: auto;
-    max-width: none;
-    top: auto !important;
-    bottom: calc(var(--mobile-tabbar-height) + 0.5rem);
+  /* 插入選單由 JS 依三角形按鈕定位在下方，勿再貼齊螢幕底 */
+  #insertMenu.insert-menu {
+    width: max-content;
+    max-width: min(18rem, calc(100vw - 1.5rem));
     max-height: min(55dvh, 22rem);
     overflow-y: auto;
     z-index: 45;
@@ -1694,6 +1738,11 @@ a {
     padding: 0.7rem 1rem;
     font-size: 1rem;
     white-space: normal;
+  }
+
+  .btn-pick-image {
+    min-height: 2.5rem;
+    padding: 0.45rem 0.85rem;
   }
 
   .mobile-tabbar {
