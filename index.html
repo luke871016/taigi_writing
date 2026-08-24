@@ -26,7 +26,7 @@
       rel="stylesheet"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="styles.css?v=1.1.0" />
+    <link rel="stylesheet" href="styles.css?v=1.1.1" />
   </head>
   <body>
     <div class="app">
@@ -79,12 +79,6 @@
             >
               模板
             </button>
-            <ul
-              id="loadTemplateMenu"
-              class="insert-menu textbook-menu"
-              role="menu"
-              hidden
-            ></ul>
           </div>
           <div class="dropdown-wrap header-textbook-dropdown">
             <button
@@ -97,12 +91,6 @@
             >
               建中的教材
             </button>
-            <ul
-              id="loadTextbookMenu"
-              class="insert-menu textbook-menu"
-              role="menu"
-              hidden
-            ></ul>
           </div>
           <button type="button" id="importSettings" class="btn btn-settings">
             匯入設定
@@ -136,6 +124,35 @@
         hidden
       ></div>
       <div id="settingsBackdrop" class="mobile-sheet-backdrop" hidden></div>
+      <ul
+        id="loadTemplateMenu"
+        class="insert-menu textbook-menu"
+        role="menu"
+        hidden
+      ></ul>
+      <ul
+        id="loadTextbookMenu"
+        class="insert-menu textbook-menu"
+        role="menu"
+        hidden
+      ></ul>
+      <ul id="insertMenu" class="insert-menu" role="menu" hidden>
+        <li role="none">
+          <button type="button" role="menuitem" id="insertContent">
+            ＋ 段落文字
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" role="menuitem" id="insertPageBreak">
+            ＋ 分頁標記
+          </button>
+        </li>
+        <li role="none">
+          <button type="button" role="menuitem" id="insertCustomImage">
+            ＋ 自訂圖片
+          </button>
+        </li>
+      </ul>
 
       <aside class="sidebar">
         <div class="sidebar-toolbar" role="toolbar" aria-label="側欄工具">
@@ -312,23 +329,6 @@
               >
                 <span class="dropdown-arrow" aria-hidden="true"></span>
               </button>
-              <ul id="insertMenu" class="insert-menu" role="menu" hidden>
-                <li role="none">
-                  <button type="button" role="menuitem" id="insertContent">
-                    ＋ 段落文字
-                  </button>
-                </li>
-                <li role="none">
-                  <button type="button" role="menuitem" id="insertPageBreak">
-                    ＋ 分頁標記
-                  </button>
-                </li>
-                <li role="none">
-                  <button type="button" role="menuitem" id="insertCustomImage">
-                    ＋ 自訂圖片
-                  </button>
-                </li>
-              </ul>
             </div>
           </div>
           <div id="itemList" class="item-list"></div>
@@ -549,6 +549,6 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <script src="app.js?v=1.1.0"></script>
+    <script src="app.js?v=1.1.1"></script>
   </body>
 </html>

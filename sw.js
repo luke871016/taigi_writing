@@ -2,11 +2,11 @@
  * 台語寫字學習單編輯器 - Service Worker
  * 網路優先，失敗才用快取，方便更新；安裝後仍可離線開啟編輯器。
  */
-var CACHE_NAME = "taigi-writing-v1.1.0";
+var CACHE_NAME = "taigi-writing-v1.1.1";
 var PRECACHE = [
   "./index.html",
-  "./styles.css?v=1.1.0",
-  "./app.js?v=1.1.0",
+  "./styles.css?v=1.1.1",
+  "./app.js?v=1.1.1",
   "./manifest.webmanifest",
   "./icons/icon-192.png",
   "./icons/icon-512.png",

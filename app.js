@@ -1949,6 +1949,7 @@
   document.addEventListener("click", function () {
     closeLoadTextbookMenu();
     closeLoadTemplateMenu();
+    closeMobileActions();
   });
 
   /** 匯出設定為 JSON 檔 */
@@ -2456,6 +2457,12 @@
       } else {
         openMobileActions();
       }
+    });
+  }
+  var headerActionsEl = document.getElementById("headerActions");
+  if (headerActionsEl) {
+    headerActionsEl.addEventListener("click", function (e) {
+      e.stopPropagation();
     });
   }
   if ($mobileActionsBackdrop) {
