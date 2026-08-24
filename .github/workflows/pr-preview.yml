@@ -1,0 +1,43 @@
+# GitHub Pages 本身不會替每個 PR 開獨立網址。
+# 正式站仍從 main 根目錄發佈；PR 預覽放到 /pr-preview/pr-<編號>/，不覆蓋現有網站。
+name: Deploy PR preview
+
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+      - closed
+
+concurrency: preview-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  preview:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Assemble static site
+        if: github.event.action != 'closed'
+        run: |
+          mkdir -p _preview
+          cp index.html app.js styles.css manifest.webmanifest sw.js README.md _preview/
+          cp -R icons templates textbooks images fonts _preview/
+          touch _preview/.nojekyll
+
+      - name: Deploy preview
+        uses: rossjrw/pr-preview-action@v1
+        with:
+          source-dir: ./_preview
+          preview-branch: main
+          umbrella-dir: pr-preview
+          pages-base-url: kiantiong.com/taigi_writing
+          wait-for-pages-deployment: true
+          qr-code: true
