@@ -208,6 +208,8 @@
   const $pageHeader = document.getElementById("pageHeader");
   const $showPageNumbers = document.getElementById("showPageNumbers");
   const $autoItemNumbers = document.getElementById("autoItemNumbers");
+  const $imgurClientId = document.getElementById("imgurClientId");
+  const $imageFilePicker = document.getElementById("imageFilePicker");
   const $infoButton = document.getElementById("infoButton");
   const $infoModal = document.getElementById("infoModal");
   const $infoModalClose = document.getElementById("infoModalClose");
@@ -317,11 +319,13 @@
   function persistProgressIfChanged() {
     try {
       var json = JSON.stringify(getSnapshot());
-      if (json === lastPersistedJson) return;
+      if (json === lastPersistedJson) return true;
       localStorage.setItem(LOCAL_STORAGE_KEY, json);
       lastPersistedJson = json;
+      return true;
     } catch (e) {
       /* 配額、隱私模式等略過 */
+      return false;
     }
   }
 
@@ -340,6 +344,230 @@
       isApplyingHistory = false;
       return false;
     }
+  }
+
+  var IMGUR_CLIENT_ID_KEY = "tai-gi-worksheet-imgur-client-id";
+  var imagePickTargetIndex = -1;
+
+  function isEmbeddedImageUrl(url) {
+    return typeof url === "string" && url.indexOf("data:image/") === 0;
+  }
+
+  function displayImageUrlValue(url) {
+    if (!url) return "";
+    if (isEmbeddedImageUrl(url)) return "";
+    return String(url);
+  }
+
+  function imageUrlStatusText(url) {
+    if (!url) return "";
+    if (isEmbeddedImageUrl(url)) return "已嵌入裝置圖片";
+    if (/^https?:\/\/i\.imgur\.com\//i.test(url)) return "已代入 Imgur 網址";
+    return "";
+  }
+
+  function getImgurClientId() {
+    try {
+      return String(localStorage.getItem(IMGUR_CLIENT_ID_KEY) || "").trim();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function setImgurClientId(value) {
+    try {
+      var v = String(value || "").trim();
+      if (v) localStorage.setItem(IMGUR_CLIENT_ID_KEY, v);
+      else localStorage.removeItem(IMGUR_CLIENT_ID_KEY);
+    } catch (e) {
+      /* 隱私模式等略過 */
+    }
+  }
+
+  function setImagePickStatus(index, text) {
+    if (!$itemList) return;
+    var wrap = $itemList.querySelector(
+      '.item-block[data-item-index="' + String(index) + '"]',
+    );
+    if (!wrap) return;
+    var statusEl = wrap.querySelector(".item-image-status");
+    if (statusEl) statusEl.textContent = text || "";
+    var pickBtn = wrap.querySelector(".btn-pick-image");
+    if (pickBtn) pickBtn.disabled = !!text && text.indexOf("…") !== -1;
+  }
+
+  function openImageFilePicker(index) {
+    if (!$imageFilePicker || index < 0) return;
+    imagePickTargetIndex = index;
+    $imageFilePicker.value = "";
+    $imageFilePicker.click();
+  }
+
+  function loadImageElementFromFile(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("無法讀取這張圖片"));
+      };
+      img.src = url;
+    });
+  }
+
+  function canvasToJpegBlob(canvas, quality) {
+    return new Promise(function (resolve) {
+      canvas.toBlob(
+        function (blob) {
+          resolve(blob || null);
+        },
+        "image/jpeg",
+        quality,
+      );
+    });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        resolve(String(reader.result || ""));
+      };
+      reader.onerror = function () {
+        reject(new Error("無法轉換圖片"));
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function compressImageFile(file) {
+    return loadImageElementFromFile(file).then(function (img) {
+      var srcW = img.naturalWidth || img.width;
+      var srcH = img.naturalHeight || img.height;
+      if (!srcW || !srcH) {
+        return Promise.reject(new Error("無法讀取這張圖片"));
+      }
+      var attempts = [
+        { maxEdge: 1600, quality: 0.72 },
+        { maxEdge: 1200, quality: 0.58 },
+        { maxEdge: 900, quality: 0.45 },
+      ];
+      function runAttempt(i) {
+        var spec = attempts[i];
+        var scale = Math.min(1, spec.maxEdge / Math.max(srcW, srcH));
+        var cw = Math.max(1, Math.round(srcW * scale));
+        var ch = Math.max(1, Math.round(srcH * scale));
+        var canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.drawImage(img, 0, 0, cw, ch);
+        return canvasToJpegBlob(canvas, spec.quality).then(function (blob) {
+          if (!blob) {
+            return {
+              blob: null,
+              dataUrl: canvas.toDataURL("image/jpeg", spec.quality),
+            };
+          }
+          return blobToDataUrl(blob).then(function (dataUrl) {
+            return { blob: blob, dataUrl: dataUrl };
+          });
+        }).then(function (result) {
+          var tooBig = result.dataUrl && result.dataUrl.length > 1400000;
+          if (tooBig && i < attempts.length - 1) return runAttempt(i + 1);
+          return result;
+        });
+      }
+      return runAttempt(0);
+    });
+  }
+
+  function uploadImageToImgur(blob, clientId) {
+    var fd = new FormData();
+    fd.append("image", blob);
+    fd.append("type", "file");
+    return fetch("https://api.imgur.com/3/image", {
+      method: "POST",
+      headers: { Authorization: "Client-ID " + clientId },
+      body: fd,
+    }).then(function (res) {
+      return res
+        .json()
+        .catch(function () {
+          return null;
+        })
+        .then(function (json) {
+          if (
+            !res.ok ||
+            !json ||
+            !json.success ||
+            !json.data ||
+            !json.data.link
+          ) {
+            var err = json && json.data && json.data.error;
+            var msg =
+              typeof err === "string"
+                ? err
+                : err && err.message
+                  ? err.message
+                  : "圖床上傳失敗";
+            throw new Error(msg);
+          }
+          return String(json.data.link);
+        });
+    });
+  }
+
+  function applyPickedImageToItem(index, url) {
+    if (!state.items[index] || state.items[index].type !== "image") return;
+    pushUndoSnapshot();
+    state.items[index].imageUrl = url;
+    renderItemList();
+    renderPreview();
+    if (!persistProgressIfChanged() && isEmbeddedImageUrl(url)) {
+      alert(
+        "圖片已顯示佇預覽，毋過瀏覽器暫存空間不足，重新整理了後可能會無去。通改較細的圖，抑是填 Imgur Client ID 上傳成網址。",
+      );
+    }
+  }
+
+  function pickImageForItem(index, file) {
+    if (!file || index < 0 || !state.items[index]) return;
+    if (file.type && file.type.indexOf("image/") !== 0) {
+      alert("請選擇圖片檔。");
+      return;
+    }
+    setImagePickStatus(index, "處理圖片中…");
+    compressImageFile(file)
+      .then(function (result) {
+        var clientId = getImgurClientId();
+        if (!clientId || !result.blob) {
+          applyPickedImageToItem(index, result.dataUrl);
+          return;
+        }
+        setImagePickStatus(index, "上傳圖床中…");
+        return uploadImageToImgur(result.blob, clientId)
+          .then(function (link) {
+            applyPickedImageToItem(index, link);
+          })
+          .catch(function () {
+            applyPickedImageToItem(index, result.dataUrl);
+            setImagePickStatus(
+              index,
+              "圖床上傳失敗，已改嵌入裝置圖片",
+            );
+          });
+      })
+      .catch(function (err) {
+        setImagePickStatus(index, "");
+        alert((err && err.message) || "無法處理這張圖片");
+      });
   }
 
   function undoLastEdit() {
@@ -704,6 +932,17 @@
     $pageHeader.addEventListener("input", updatePageHeader);
     $pageHeader.addEventListener("change", updatePageHeader);
     if (state.pageHeader) $pageHeader.value = state.pageHeader;
+  }
+
+  if ($imgurClientId) {
+    $imgurClientId.value = getImgurClientId();
+    $imgurClientId.addEventListener("change", function () {
+      setImgurClientId($imgurClientId.value);
+    });
+    $imgurClientId.addEventListener("blur", function () {
+      setImgurClientId($imgurClientId.value);
+      $imgurClientId.value = getImgurClientId();
+    });
   }
 
   if ($showPageNumbers) {
@@ -1161,14 +1400,36 @@
         urlLabel.textContent = "圖片網址";
         var urlInput = document.createElement("input");
         urlInput.type = "text";
-        urlInput.placeholder = "請輸入圖片的網址";
-        urlInput.value = item.imageUrl || item.imagePath || "";
+        urlInput.placeholder = isEmbeddedImageUrl(item.imageUrl || item.imagePath)
+          ? "已嵌入裝置圖片（嘛通改貼網址）"
+          : "請輸入圖片的網址";
+        urlInput.value = displayImageUrlValue(item.imageUrl || item.imagePath);
         urlInput.addEventListener("input", function () {
-          setItemField(getBlockIndex(wrap), "imageUrl", urlInput.value);
+          var idx = getBlockIndex(wrap);
+          setItemField(idx, "imageUrl", urlInput.value);
+          var statusEl = wrap.querySelector(".item-image-status");
+          if (statusEl)
+            statusEl.textContent = imageUrlStatusText(urlInput.value);
         });
         urlRow.appendChild(urlLabel);
         urlRow.appendChild(urlInput);
         wrap.appendChild(urlRow);
+
+        var pickRow = document.createElement("div");
+        pickRow.className = "item-image-actions";
+        var pickBtn = document.createElement("button");
+        pickBtn.type = "button";
+        pickBtn.className = "btn btn-settings btn-pick-image";
+        pickBtn.textContent = "對相簿揀圖";
+        pickBtn.addEventListener("click", function () {
+          openImageFilePicker(getBlockIndex(wrap));
+        });
+        var statusEl = document.createElement("span");
+        statusEl.className = "item-image-status";
+        statusEl.textContent = imageUrlStatusText(item.imageUrl || item.imagePath);
+        pickRow.appendChild(pickBtn);
+        pickRow.appendChild(statusEl);
+        wrap.appendChild(pickRow);
 
         var heightRow = document.createElement("div");
         heightRow.className = "item-field item-field-last";
@@ -1695,23 +1956,47 @@
     if (!$insertMenu || !$insertMenuToggle) return;
     $insertMenu.hidden = false;
     $insertMenuToggle.setAttribute("aria-expanded", "true");
-    if (isCompactLayout()) {
-      $insertMenu.style.top = "";
-      $insertMenu.style.left = "";
-      return;
+    positionInsertMenu();
+  }
+
+  function getViewportBottomReservePx() {
+    if (!isCompactLayout()) return 8;
+    var bar = document.querySelector(".mobile-tabbar");
+    if (bar) {
+      var h = bar.getBoundingClientRect().height;
+      if (h > 0) return h + 8;
     }
+    return 64;
+  }
+
+  /** 依「添新的項目」旁三角形按鈕定位，優先出現佇按鈕下方 */
+  function positionInsertMenu() {
+    if (!$insertMenu || $insertMenu.hidden || !$insertMenuToggle) return;
     var rect = $insertMenuToggle.getBoundingClientRect();
-    var menuTop = rect.bottom + 4;
-    var menuLeft = rect.left;
-    $insertMenu.style.top = menuTop + "px";
-    $insertMenu.style.left = menuLeft + "px";
+    var gap = 4;
+    $insertMenu.style.right = "auto";
+    $insertMenu.style.bottom = "auto";
+    $insertMenu.style.top = rect.bottom + gap + "px";
+    $insertMenu.style.left = rect.left + "px";
     requestAnimationFrame(function () {
+      if ($insertMenu.hidden) return;
       var menuRect = $insertMenu.getBoundingClientRect();
-      if (menuRect.right > window.innerWidth) {
-        $insertMenu.style.left = window.innerWidth - menuRect.width - 8 + "px";
-      }
-      if (menuRect.bottom > window.innerHeight) {
-        $insertMenu.style.top = rect.top - menuRect.height - 4 + "px";
+      var vw = window.innerWidth;
+      var vh = window.innerHeight;
+      var pad = 8;
+      var left = rect.right - menuRect.width;
+      if (left < pad) left = pad;
+      if (left + menuRect.width > vw - pad)
+        left = Math.max(pad, vw - menuRect.width - pad);
+      $insertMenu.style.left = left + "px";
+      var bottomLimit = vh - getViewportBottomReservePx();
+      if (menuRect.bottom > bottomLimit) {
+        var above = rect.top - menuRect.height - gap;
+        if (above >= pad) {
+          $insertMenu.style.top = above + "px";
+        } else {
+          $insertMenu.style.top = pad + "px";
+        }
       }
     });
   }
@@ -1739,6 +2024,16 @@
     $insertMenu.addEventListener("click", function (e) {
       e.stopPropagation();
     });
+    window.addEventListener("resize", function () {
+      if ($insertMenu && !$insertMenu.hidden) positionInsertMenu();
+    });
+    document.addEventListener(
+      "scroll",
+      function () {
+        if ($insertMenu && !$insertMenu.hidden) positionInsertMenu();
+      },
+      true,
+    );
   }
   if ($insertPageBreak) {
     $insertPageBreak.addEventListener("click", function () {
@@ -1752,6 +2047,16 @@
         imageUrl: "",
         imageHeightMm: 100,
       });
+    });
+  }
+  if ($imageFilePicker) {
+    $imageFilePicker.addEventListener("change", function () {
+      var file = $imageFilePicker.files && $imageFilePicker.files[0];
+      var index = imagePickTargetIndex;
+      $imageFilePicker.value = "";
+      imagePickTargetIndex = -1;
+      if (!file || index < 0) return;
+      pickImageForItem(index, file);
     });
   }
   if ($insertContent) {

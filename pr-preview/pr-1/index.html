@@ -26,7 +26,7 @@
       rel="stylesheet"
       crossorigin="anonymous"
     />
-    <link rel="stylesheet" href="styles.css?v=1.1.4" />
+    <link rel="stylesheet" href="styles.css?v=1.1.5" />
   </head>
   <body>
     <div class="app">
@@ -323,6 +323,32 @@
                   </label>
                 </div>
               </div>
+
+              <div class="panel">
+                <h2>圖床（選填）</h2>
+                <p class="settings-hint">
+                  自訂圖片通對相簿揀圖。無金鑰時會壓縮了後直接嵌佇學習單內（離線佮輸出
+                  PDF 較穩當）。若有家己的 Imgur Client
+                  ID，揀圖時會嘗試上傳取得網址（JSON 較細，毋過跨網域圖佇 PDF
+                  有時會空白）。申請：
+                  <a
+                    href="https://api.imgur.com/oauth2/addclient"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    >Imgur API</a
+                  >
+                </p>
+                <div class="input-group">
+                  <input
+                    type="text"
+                    id="imgurClientId"
+                    class="page-header-input"
+                    placeholder="Imgur Client ID（選填）"
+                    autocomplete="off"
+                    spellcheck="false"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         </section>
@@ -437,6 +463,10 @@
               <code>==文字==</code> 標示螢光筆重點。
             </li>
             <li>「分頁標記」通指定系統佇佗位換後一頁。</li>
+            <li>
+              「自訂圖片」通貼網址，嘛通「對相簿揀圖」自動壓縮嵌入；設定內底若有填
+              Imgur Client ID，會嘗試上傳圖床了後代入網址。
+            </li>
             <li>「模板」有預設的學習單版型，通直接載入使用抑是改內容。</li>
             <li>
               「建中的教材」有
@@ -456,6 +486,8 @@
           <ul>
             <li>手機介面：編輯／預覽分頁、適寬預覽、項目上下調整</li>
             <li>支援安裝到主畫面／桌面（PWA）</li>
+            <li>新增項目選單改出現佇按鈕下方</li>
+            <li>自訂圖片通對相簿揀圖，可選上傳 Imgur</li>
           </ul>
           <h3>2026.4.19</h3>
           <ul>
@@ -573,6 +605,14 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/9.1.6/marked.min.js"></script>
-    <script src="app.js?v=1.1.4"></script>
+    <input
+      type="file"
+      id="imageFilePicker"
+      class="visually-hidden-file"
+      accept="image/*"
+      tabindex="-1"
+      aria-hidden="true"
+    />
+    <script src="app.js?v=1.1.5"></script>
   </body>
 </html>
