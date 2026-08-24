@@ -229,6 +229,15 @@
   const $installHelpModal = document.getElementById("installHelpModal");
   const $installHelpClose = document.getElementById("installHelpClose");
   const $previewWrap = document.querySelector(".preview-wrap");
+  const $previewViewport = document.getElementById("previewViewport");
+  const $previewStage = document.getElementById("previewStage");
+  const $headerActions = document.getElementById("headerActions");
+  const $mobileTemplateList = document.getElementById("mobileTemplateList");
+  const $mobileTextbookList = document.getElementById("mobileTextbookList");
+  const $mobileMenuTemplates = document.getElementById("mobileMenuTemplates");
+  const $mobileMenuTextbooks = document.getElementById("mobileMenuTextbooks");
+  const $backFromTemplates = document.getElementById("backFromTemplates");
+  const $backFromTextbooks = document.getElementById("backFromTextbooks");
 
   function updateHistoryButtonState() {
     if ($undoButton) {
@@ -1907,6 +1916,10 @@
     $loadTemplateBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       closeLoadTextbookMenu();
+      if (isCompactLayout()) {
+        openMobileCatalogSubview("templates");
+        return;
+      }
       if ($loadTemplateMenu.hidden) {
         fetch("templates/index.json?v=1.0.4")
           .then(function (r) {
@@ -1936,6 +1949,10 @@
     $loadTextbookBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       closeLoadTemplateMenu();
+      if (isCompactLayout()) {
+        openMobileCatalogSubview("textbooks");
+        return;
+      }
       if ($loadTextbookMenu.hidden) {
         fetch("textbooks/index.json?v=1.0.9")
           .then(function (r) {
@@ -2329,6 +2346,97 @@
     document.body.classList.remove("mobile-actions-open");
     if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "false");
     if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = true;
+    resetMobileMenuSubview();
+  }
+
+  function resetMobileMenuSubview() {
+    if ($headerActions) {
+      $headerActions.classList.remove(
+        "is-subview",
+        "is-subview-templates",
+        "is-subview-textbooks",
+      );
+    }
+    if ($mobileMenuTemplates) $mobileMenuTemplates.hidden = true;
+    if ($mobileMenuTextbooks) $mobileMenuTextbooks.hidden = true;
+  }
+
+  function showMobileMenuSubview(kind) {
+    resetMobileMenuSubview();
+    if (!$headerActions) return;
+    $headerActions.classList.add("is-subview");
+    if (kind === "templates") {
+      $headerActions.classList.add("is-subview-templates");
+      if ($mobileMenuTemplates) $mobileMenuTemplates.hidden = false;
+    } else {
+      $headerActions.classList.add("is-subview-textbooks");
+      if ($mobileMenuTextbooks) $mobileMenuTextbooks.hidden = false;
+    }
+  }
+
+  function fillMobileCatalogList(listEl, list, folder) {
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    list.forEach(function (entry) {
+      var name = entry.name || entry.file || "未命名";
+      var file = entry.file;
+      if (!file) return;
+      var li = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = name;
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var path = folder + "/" + file;
+        fetch(path)
+          .then(function (r) {
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+          })
+          .then(function (data) {
+            applyImportedSettings(data);
+            closeMobileActions();
+            if (isCompactLayout()) setMobilePane("preview");
+          })
+          .catch(function (err) {
+            alert(
+              "無法載入：「" +
+                name +
+                "」\n" +
+                (err && err.message ? err.message : "請確認檔案存在且可讀取。"),
+            );
+          });
+      });
+      li.appendChild(btn);
+      listEl.appendChild(li);
+    });
+  }
+
+  function openMobileCatalogSubview(kind) {
+    var isTemplates = kind === "templates";
+    var listEl = isTemplates ? $mobileTemplateList : $mobileTextbookList;
+    var path = isTemplates
+      ? "templates/index.json?v=1.0.4"
+      : "textbooks/index.json?v=1.0.9";
+    var fallback = isTemplates ? defaultTemplateList : defaultTextbookList;
+    var folder = isTemplates ? "templates" : "textbooks";
+    showMobileMenuSubview(kind);
+    if (listEl) listEl.innerHTML = "<li>載入中…</li>";
+    fetch(path)
+      .then(function (r) {
+        if (!r.ok) throw new Error("無法取得清單");
+        return r.json();
+      })
+      .then(function (list) {
+        fillMobileCatalogList(
+          listEl,
+          Array.isArray(list) && list.length > 0 ? list : fallback,
+          folder,
+        );
+      })
+      .catch(function () {
+        fillMobileCatalogList(listEl, fallback, folder);
+      });
   }
 
   function openMobileActions() {
@@ -2337,38 +2445,291 @@
     closeLoadTemplateMenu();
     closeLoadTextbookMenu();
     hideInstallBanner();
+    resetMobileMenuSubview();
     document.body.classList.add("mobile-actions-open");
     if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "true");
     if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = false;
   }
 
-  function updatePreviewScale() {
-    var wrap = $previewWrap;
-    var pages = $worksheetPreview;
-    if (!wrap || !pages) return;
-    var shouldFit = isCompactLayout() && previewFitWidth;
-    if (!shouldFit) {
-      pages.style.transform = "";
-      wrap.style.width = "";
-      wrap.style.height = "";
-      wrap.classList.remove("is-scaled");
+  var previewCam = {
+    x: 0,
+    y: 0,
+    scale: 1,
+    fitScale: 1,
+  };
+
+  function clearPreviewTransform() {
+    if ($previewStage) $previewStage.style.transform = "";
+    if ($worksheetPreview) $worksheetPreview.style.transform = "";
+    if ($previewWrap) {
+      $previewWrap.style.width = "";
+      $previewWrap.style.height = "";
+      $previewWrap.classList.remove("is-scaled");
+    }
+  }
+
+  function getPreviewPageSize() {
+    var page = $worksheetPreview
+      ? $worksheetPreview.querySelector(".worksheet-page")
+      : null;
+    if (!page || !$worksheetPreview) return null;
+    return {
+      pageW: page.offsetWidth,
+      pageH: $worksheetPreview.scrollHeight,
+    };
+  }
+
+  function applyPreviewCamera() {
+    if (!$previewStage) return;
+    $previewStage.style.transform =
+      "translate(" +
+      previewCam.x +
+      "px, " +
+      previewCam.y +
+      "px) scale(" +
+      previewCam.scale +
+      ")";
+    $previewStage.style.transformOrigin = "0 0";
+  }
+
+  function clampPreviewCamera() {
+    var size = getPreviewPageSize();
+    var view = $previewViewport;
+    if (!size || !view) return;
+    var viewW = view.clientWidth;
+    var viewH = view.clientHeight;
+    var scaledW = size.pageW * previewCam.scale;
+    var scaledH = size.pageH * previewCam.scale;
+    var pad = 12;
+    if (scaledW <= viewW) {
+      previewCam.x = (viewW - scaledW) / 2;
+    } else {
+      var minX = viewW - scaledW - pad;
+      var maxX = pad;
+      if (previewCam.x < minX) previewCam.x = minX;
+      if (previewCam.x > maxX) previewCam.x = maxX;
+    }
+    if (scaledH <= viewH) {
+      previewCam.y = pad;
+    } else {
+      var minY = viewH - scaledH - pad;
+      var maxY = pad;
+      if (previewCam.y < minY) previewCam.y = minY;
+      if (previewCam.y > maxY) previewCam.y = maxY;
+    }
+  }
+
+  function fitPreviewCamera() {
+    if (!isCompactLayout() || !$previewViewport) {
+      clearPreviewTransform();
       return;
     }
-    var page = pages.querySelector(".worksheet-page");
-    if (!page) return;
-    var naturalW = page.offsetWidth;
-    var naturalH = pages.scrollHeight;
-    if (!naturalW || !naturalH) return;
-    var availW = ($main ? $main.clientWidth : window.innerWidth) - 8;
-    if (availW < 80) availW = window.innerWidth - 24;
-    var scale = availW / naturalW;
+    var size = getPreviewPageSize();
+    if (!size || !size.pageW) return;
+    var viewW = $previewViewport.clientWidth;
+    var viewH = $previewViewport.clientHeight;
+    if (viewW < 40) return;
+    var pad = 16;
+    var scale = (viewW - pad) / size.pageW;
     if (scale > 1) scale = 1;
     if (scale < 0.12) scale = 0.12;
-    pages.style.transformOrigin = "top left";
-    pages.style.transform = "scale(" + scale + ")";
-    wrap.style.width = naturalW * scale + "px";
-    wrap.style.height = naturalH * scale + "px";
-    wrap.classList.add("is-scaled");
+    previewCam.fitScale = scale;
+    previewCam.scale = scale;
+    previewCam.x = (viewW - size.pageW * scale) / 2;
+    previewCam.y = pad / 2;
+    if (size.pageH * scale < viewH) {
+      previewCam.y = Math.max(pad / 2, (viewH - size.pageH * scale) / 2);
+    }
+    applyPreviewCamera();
+    previewFitWidth = true;
+    syncFitToggleLabel();
+  }
+
+  function updatePreviewScale() {
+    if (!isCompactLayout()) {
+      clearPreviewTransform();
+      return;
+    }
+    fitPreviewCamera();
+  }
+
+  function setupPreviewGestures() {
+    if (!$previewViewport) return;
+    var pointers = {};
+    var pinch = null;
+    var lastTap = null;
+    var moved = false;
+
+    function pointerCount() {
+      return Object.keys(pointers).length;
+    }
+
+    function centroidAndSpan() {
+      var ids = Object.keys(pointers);
+      var a = pointers[ids[0]];
+      var b = pointers[ids[1]];
+      return {
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+        dist: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+      };
+    }
+
+    function maxPreviewScale() {
+      return Math.max(1, previewCam.fitScale * 3.2);
+    }
+
+    $previewViewport.addEventListener(
+      "pointerdown",
+      function (evt) {
+        if (!isCompactLayout()) return;
+        if (!document.body.classList.contains("mobile-pane-preview")) return;
+        pointers[evt.pointerId] = { x: evt.clientX, y: evt.clientY };
+        moved = false;
+        if (pointerCount() === 2) {
+          var c = centroidAndSpan();
+          pinch = {
+            dist: c.dist,
+            scale: previewCam.scale,
+            x: previewCam.x,
+            y: previewCam.y,
+            cx: c.x,
+            cy: c.y,
+          };
+        } else if (pointerCount() === 1) {
+          pinch = null;
+          $previewViewport.setPointerCapture(evt.pointerId);
+        }
+      },
+    );
+
+    $previewViewport.addEventListener(
+      "pointermove",
+      function (evt) {
+        if (!pointers[evt.pointerId]) return;
+        var prev = pointers[evt.pointerId];
+        var dx = evt.clientX - prev.x;
+        var dy = evt.clientY - prev.y;
+        pointers[evt.pointerId] = { x: evt.clientX, y: evt.clientY };
+        if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+
+        if (pointerCount() >= 2 && pinch) {
+          var c = centroidAndSpan();
+          var nextScale = pinch.scale * (c.dist / pinch.dist);
+          var minS = previewCam.fitScale * 0.92;
+          var maxS = maxPreviewScale();
+          if (nextScale < minS) nextScale = minS;
+          if (nextScale > maxS) nextScale = maxS;
+          var rect = $previewViewport.getBoundingClientRect();
+          var lx = pinch.cx - rect.left;
+          var ly = pinch.cy - rect.top;
+          var wx = (lx - pinch.x) / pinch.scale;
+          var wy = (ly - pinch.y) / pinch.scale;
+          previewCam.scale = nextScale;
+          previewCam.x = lx - wx * nextScale;
+          previewCam.y = ly - wy * nextScale;
+          clampPreviewCamera();
+          applyPreviewCamera();
+          previewFitWidth = Math.abs(previewCam.scale - previewCam.fitScale) < 0.02;
+          syncFitToggleLabel();
+        } else if (pointerCount() === 1 && !pinch) {
+          previewCam.x += dx;
+          previewCam.y += dy;
+          clampPreviewCamera();
+          applyPreviewCamera();
+        }
+      },
+    );
+
+    function endPointer(evt) {
+      var wasCount = pointerCount();
+      delete pointers[evt.pointerId];
+      if (pointerCount() < 2) pinch = null;
+      if (wasCount === 1 && !moved) {
+        var now = Date.now();
+        if (
+          lastTap &&
+          now - lastTap.t < 280 &&
+          Math.hypot(evt.clientX - lastTap.x, evt.clientY - lastTap.y) < 28
+        ) {
+          lastTap = null;
+          var size = getPreviewPageSize();
+          if (!size) return;
+          var rect = $previewViewport.getBoundingClientRect();
+          var lx = evt.clientX - rect.left;
+          var ly = evt.clientY - rect.top;
+          var nearFit =
+            Math.abs(previewCam.scale - previewCam.fitScale) < 0.04;
+          if (nearFit) {
+            var target = Math.min(maxPreviewScale(), previewCam.fitScale * 2.1);
+            var wx = (lx - previewCam.x) / previewCam.scale;
+            var wy = (ly - previewCam.y) / previewCam.scale;
+            previewCam.scale = target;
+            previewCam.x = lx - wx * target;
+            previewCam.y = ly - wy * target;
+            previewFitWidth = false;
+          } else {
+            fitPreviewCamera();
+            syncFitToggleLabel();
+            return;
+          }
+          clampPreviewCamera();
+          applyPreviewCamera();
+          syncFitToggleLabel();
+        } else {
+          lastTap = { t: now, x: evt.clientX, y: evt.clientY };
+        }
+      }
+    }
+
+    $previewViewport.addEventListener("pointerup", endPointer);
+    $previewViewport.addEventListener("pointercancel", endPointer);
+
+    $previewViewport.addEventListener(
+      "touchmove",
+      function (evt) {
+        if (!isCompactLayout()) return;
+        if (!document.body.classList.contains("mobile-pane-preview")) return;
+        evt.preventDefault();
+      },
+      { passive: false },
+    );
+
+    $previewViewport.addEventListener(
+      "wheel",
+      function (evt) {
+        if (!isCompactLayout()) return;
+        if (!document.body.classList.contains("mobile-pane-preview")) return;
+        if (evt.ctrlKey || evt.metaKey) {
+          evt.preventDefault();
+          var rect = $previewViewport.getBoundingClientRect();
+          var lx = evt.clientX - rect.left;
+          var ly = evt.clientY - rect.top;
+          var wx = (lx - previewCam.x) / previewCam.scale;
+          var wy = (ly - previewCam.y) / previewCam.scale;
+          var next = previewCam.scale * (evt.deltaY < 0 ? 1.08 : 0.92);
+          var minS = previewCam.fitScale * 0.92;
+          var maxS = maxPreviewScale();
+          if (next < minS) next = minS;
+          if (next > maxS) next = maxS;
+          previewCam.scale = next;
+          previewCam.x = lx - wx * next;
+          previewCam.y = ly - wy * next;
+          clampPreviewCamera();
+          applyPreviewCamera();
+          previewFitWidth =
+            Math.abs(previewCam.scale - previewCam.fitScale) < 0.02;
+          syncFitToggleLabel();
+        } else {
+          previewCam.x -= evt.deltaX;
+          previewCam.y -= evt.deltaY;
+          clampPreviewCamera();
+          applyPreviewCamera();
+          evt.preventDefault();
+        }
+      },
+      { passive: false },
+    );
   }
 
   function setMobilePane(pane) {
@@ -2392,7 +2753,9 @@
     closeLoadTextbookMenu();
     if (isPreview) {
       requestAnimationFrame(function () {
-        updatePreviewScale();
+        requestAnimationFrame(function () {
+          fitPreviewCamera();
+        });
       });
     }
   }
@@ -2474,10 +2837,22 @@
       }
     });
   }
-  var headerActionsEl = document.getElementById("headerActions");
+  var headerActionsEl = $headerActions;
   if (headerActionsEl) {
     headerActionsEl.addEventListener("click", function (e) {
       e.stopPropagation();
+    });
+  }
+  if ($backFromTemplates) {
+    $backFromTemplates.addEventListener("click", function (e) {
+      e.stopPropagation();
+      resetMobileMenuSubview();
+    });
+  }
+  if ($backFromTextbooks) {
+    $backFromTextbooks.addEventListener("click", function (e) {
+      e.stopPropagation();
+      resetMobileMenuSubview();
     });
   }
   if ($mobileActionsBackdrop) {
@@ -2499,9 +2874,7 @@
   if ($previewFitToggle) {
     syncFitToggleLabel();
     $previewFitToggle.addEventListener("click", function () {
-      previewFitWidth = !previewFitWidth;
-      syncFitToggleLabel();
-      updatePreviewScale();
+      fitPreviewCamera();
     });
   }
   if ($mobileExportPdf && $exportPdf) {
@@ -2592,6 +2965,7 @@
     }, 80);
   });
 
+  setupPreviewGestures();
   setMobilePane("edit");
   updateInstallButtonVisibility();
 
