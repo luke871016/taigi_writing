@@ -1,0 +1,246 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "type": "content",
+      "content": "# 一、輕聲（neutral tone）\n## 啥物是輕聲？\n輕聲是一个特殊變調規則，出現佇兩種所在：\n\n1. 語助詞，通常佇句尾抑是語氣頓蹬的所在\n2. 特定的輕聲詞彙\n\n## 輕聲的書寫佮語音規則\n- 輕聲的音節頭前用兩條連字符號`--`表示\n- 寫**漢字**的時陣通常**免標輕聲**\n- 音節本身讀**較輕、較短的低音**（音值110）\n- 輕聲的**頭前音節會讀本調**\n\n## 有輕聲意義無仝的詞彙\n延伸閱讀：[教典僻智識–\n有​輕聲意思就無仝的詞](https://kiantiong.com/sutian/13/)\n\n有一類的輕聲本身有特別的語義，甚至唸輕聲佮唸一般變調閣會造成意義無仝。\n\n遮的詞一般寫漢字的時陣袂特別標輕聲，語義愛看頂下文。",
+      "id": "item-187"
+    },
+    {
+      "description": "有輕聲意義無仝的詞彙",
+      "exampleText": "kuài-lâng（怪人）|kuài--lâng（怪人）\nbô khì（無去）|bô--khì（無去）\nkiann-sí（驚死）|kiann--sí（驚死）\nliáu-liáu（了了）|--liáu-liáu（了了）\nāu-ji̍t（後日）|āu--ji̍t（後日）\ntsò-lâng（做人）|tsò--lâng（做人）\ntsuè-lâng（做人）|tsuè--lâng（做人）\nkiann-lâng（驚人）|kiann--lâng（驚人）\nkhui-khui（開開）|khui--khui（開開）",
+      "lineCount": 12,
+      "id": "item-188"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-189"
+    },
+    {
+      "type": "content",
+      "content": "## 句尾語助詞、疑問詞\n遮的語助詞若是出現佇句尾，抑是語氣頓蹬的所在，會讀做輕聲，頭前會標輕聲符號 `--`。 ",
+      "id": "item-190"
+    },
+    {
+      "description": "句尾語氣詞",
+      "exampleText": "Guá tsa-hng ū uân-sîng--ah.（我昨昏有完成矣。）\nHeh--ah, guá tsai--ah. （嘿啊，我知啊。）\nLí tsiok khiáu--neh!（你足巧呢！）\nTsia̍h khah bái--leh! （食較䆀咧！）\nÀi ke liān-si̍p--hannh. （愛加練習唅。）\nHó--lah. （好啦）\nÁn-ne--ooh. （按呢喔）\nBeh tshut-huat--looh! （欲出發囉！）",
+      "lineCount": 13,
+      "id": "item-191"
+    },
+    {
+      "description": "句尾疑問詞",
+      "exampleText": "Án-ne hó--m̄? （按呢好毋？）\nLí ū iàu-kín--bô? （你有要緊無？）\nLí ē thiànn--bē? （你會疼袂？）\nTsia̍h-pá--buē? （食飽未？）",
+      "lineCount": 8,
+      "id": "item-192"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-197"
+    },
+    {
+      "type": "content",
+      "content": "## 時間詞\n有足濟佮時間相關的詞會固定讀做輕聲，條列佇下跤：",
+      "id": "item-196"
+    },
+    {
+      "description": "時間詞（暗時àm-sî固定讀一般變調、後年 āu-nî 敢欲讀輕聲是攏會使）",
+      "exampleText": "ji̍t--sî（日時）|mê--sî（暝時）\nàm-sî （暗時）|tso̍h--ji̍t（昨日）\ntso̍h-ji̍t（昨日）|tuā-tso̍h--ji̍t（大昨日）\nloh-tso̍h--ji̍t（落昨日）|āu--ji̍t（後日）\ntuā-āu--ji̍t（大後日）|loh-āu--ji̍t（落後日）\ntsiann--gue̍h（正月）|jī--gue̍h（二月）\nsann--gue̍h（三月）|tsa̍p-jī--gue̍h（十二月）\ntsûn--nî（前年）|tuā-tsûn--nî（大前年）\ntuā-āu--nî（大後年）|loh-āu--nî（落後年）\nāu-nî/āu--nî（後年）",
+      "lineCount": 13,
+      "id": "item-193"
+    },
+    {
+      "type": "content",
+      "content": "## 稱呼\n佮名姓有相關固定讀輕聲的構詞，條列佇下跤。名姓照台羅規則頭字愛大寫。",
+      "id": "item-198"
+    },
+    {
+      "description": "稱呼",
+      "exampleText": "Tân--ka（陳家）|Ông--sī（王氏）\nLîm--tshù（林厝）|N̂g--sian-sinn（黃先生）\nNgôo--ê（吳的）|Niû--ko（梁哥）",
+      "lineCount": 6,
+      "id": "item-199"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-200"
+    },
+    {
+      "type": "content",
+      "content": "## 動詞後壁的補語／助詞\n標示方位、時間性質囥佇動詞後壁的補語佮助詞，若是佇句尾抑是語氣頓蹬的所在會讀輕聲。\n（後壁有及物的情形讀一般變調）",
+      "id": "item-201"
+    },
+    {
+      "description": "動詞後壁的補語／助詞",
+      "exampleText": "kuè--lâi（過來）|kuè--khì(過去)\ntsáu--kuè-lâi（走過來）|tsáu--kuè-khì（走過去）\npue--tshut-lâi（飛出來）|pue--tshut-khì（飛出去）\nsái--ji̍p-lâi（駛入來）|sái--ji̍p-khì（駛入去）\npua̍h--lo̍h-lâi（跋落來）|pua̍h--lo̍h-khì（跋落去）\nsiá--kuè（寫過）|khuànn--tio̍h（看著）\nphah--sí（拍死）",
+      "lineCount": 8,
+      "id": "item-202"
+    },
+    {
+      "description": "練習：請共下跤的語句改予正確",
+      "exampleText": "你共遮的物件囥入去。\nLí kā tsia-ê mi̍h-kiānn khǹg ji̍p--khì.\n\n你共遮的物件囥入去觳仔內底。\nLí kā tsia-ê mi̍h-kiānn khǹg--ji̍p-khì khok-á lāi-té.\n\n死肉拍著嘛袂疼。\nSí-bah phah-tio̍h mā bē thiànn.\n\n若想著這層代誌，我就火大。\nNā siūnn--tio̍h tsit tsân tāi-tsì, guá tō hué-tuā.",
+      "lineCount": 12,
+      "id": "item-204"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-205"
+    },
+    {
+      "type": "content",
+      "content": "## 輕聲？連寫？\n\n- 兩音節的詞輕聲的時陣，中央連寫，頭前寫輕聲符號。\n- 連續的輕聲音節嘛會當表達分詞\n",
+      "id": "item-206"
+    },
+    {
+      "description": "多音節輕聲、連續的輕聲詞",
+      "exampleText": "Tán--tsi̍t-ē--lah!（等一下啦！）\nTsáu--tshut-khì--looh!（走出去囉！）\nHó--ah--lah.（好矣啦！）\nTuì hia lo̍h--khì.（對遐落去。）\nTuì hia kiânn--lo̍h-khì.（對遐行落去。）\nTuì hia kiânn--lo̍h-khì--m̄?（對遐行落去毋？）",
+      "lineCount": 8,
+      "id": "item-207"
+    },
+    {
+      "type": "content",
+      "content": "# 二、隨前輕聲\n部份的輕聲音節的音懸會綴頭前的音節變化，一般教材攏叫做「隨前輕聲」 ，共固定唸低調的叫做「固定輕聲」\n \n※有的腔口無隨前輕聲，全部攏是低調\n\n隨前輕聲主要有下跤幾个類型：\n- 句尾人稱代名詞\n- --ê（的）\n- --á（仔）\n- --ah（矣）",
+      "id": "item-209"
+    },
+    {
+      "description": "七个聲調的隨前輕聲",
+      "exampleText": "bong--i（摸伊）|ín--i（允伊）\nài--i（愛伊）|bok--i（揍伊）\nthâi--i（刣伊）|mē--i（罵伊）\nhua̍t--i（罰伊）",
+      "lineCount": 4,
+      "id": "item-210"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-211"
+    },
+    {
+      "description": "句尾人稱代名詞",
+      "exampleText": "你莫嚇驚我。\nLí mài heh-kiann--guá.\n\n伊彼个人真𠢕抾恨，你莫去惹伊。\nI hit ê lâng tsin gâu khioh-hīn, lí mài khì jiá--i.\n\n你莫怪伊。\nLí mài kuài--i.\n\n徛佇尾溜彼个，你敢捌伊？\nKhiā tī bué-liu hit ê, lí kám bat--i? \n\n希望你會使成全我。\nHi-bāng lí ē-sái sîng-tsuân--guá.\n\n遮的物件緊送去工場予𪜶。\nTsia-ê mi̍h-kiānn kín sàng-khì kang-tiûnn hōo--in.\n\n我真佩服伊。\nGuá tsin puē-ho̍k--i.",
+      "lineCount": 21,
+      "id": "item-213"
+    },
+    {
+      "type": "content",
+      "content": "※教典第八調唸「高降調」 ，後壁的「伊」隨前輕聲唸低平",
+      "id": "item-214"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-215"
+    },
+    {
+      "type": "content",
+      "content": "## 隨前輕聲：--ê（的）\n「～--ê」是台語捷看的名詞構詞方式，這款構詞會當代表身份職業、抑是用做有某乜特性的物體的稱呼。這款名詞性質的「～--ê」固定會讀輕聲，而且會當讀隨前輕聲。\n\n「--ê」閣有其他用法，請參考[教典詞目](https://sutian.moe.edu.tw/und-hani/su/4370/)",
+      "id": "item-217"
+    },
+    {
+      "description": "名詞性質的 ～--ê（的）",
+      "exampleText": "pun--ê 分的|ióng--ê 養的\nsè-hàn--ê 細漢的|uānn-thiap--ê 換帖的\nliâng--ê 涼的|gōng--ê 戇的\ntsò-ba̍k--ê 做木的",
+      "lineCount": 6,
+      "id": "item-216"
+    },
+    {
+      "type": "content",
+      "content": "若是佇句中，「的」並毋是名詞性質的構詞的時陣，愛讀一般變調",
+      "id": "item-218"
+    },
+    {
+      "description": "「ê」佇無仝情境的比較",
+      "exampleText": "Nâ--ê guá bô ài.（藍的我無愛。）\nNâ ê sann guá bô ài. （藍的衫我無愛。）\n\nHia--ê sī guá siá--ê.（遐的是我寫的。）\nHia ê bûn-tsiunn sī guá siá--ê.（遐的文章是我寫的。） \n\nHue sī âng--ê.（花是紅的。）\n紅的花。（Âng ê hue.）",
+      "lineCount": 12,
+      "id": "item-219"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-220"
+    },
+    {
+      "type": "content",
+      "content": "## 隨前輕聲：--á（仔）\n「--á（仔）」囥佇詞尾部份情形會唸做輕聲，會當隨前變調",
+      "id": "item-221"
+    },
+    {
+      "description": "教典所有有輕聲的「～--á」",
+      "exampleText": "ḿ--á （姆仔）|pâ--á （爸仔）\ntsí--á （姊仔）|Nâ-tâu-tsí--á （林投姊仔）\nhue-hue--á （花花仔）|oo-niau-tsí--á （烏貓姊仔）\nkâu-san--á （猴山仔）|thâu--á （頭仔）\nenn-á/inn--á （嬰仔）|lím-lím--á （臨臨仔）\npinn--á （邊仔）|tiong-tiong--á （中中仔）\nhán-hán--á （罕罕仔）|bú--á （母仔）\npe̍h-tsha̍t-tshit--á（白賊七仔）\nThinn-kong-peh--á （天公伯仔）\nTshit--á khah hìng peh--á. （七仔較興八仔。）",
+      "lineCount": 11,
+      "id": "item-222"
+    },
+    {
+      "type": "content",
+      "content": "## 隨前輕聲：--ah（矣）\n句尾助詞「--ah（矣）」意思接近華語「了」，嘛會當讀隨前輕聲",
+      "id": "item-223"
+    },
+    {
+      "description": "觀察下跤例句的「矣」若是欲隨前輕聲會讀啥物音",
+      "exampleText": "諞仙仔錢諞上手就溜旋矣。\nPián-sian-á tsînn pián tsiūnn-tshiú tō liu-suan--ah.\n我下擺毋敢矣！\nGuá ē-pái m̄ kánn--ah!\n今囡仔離跤手矣，你會使去四界遊矣。\nTann gín-á lī-kha-tshiú--ah, lí ē-sái khì sì-kè iû--ah.\n十二點欲食中晝矣！\nTsa̍p-jī tiám beh tsia̍h tiong-tàu--ah!",
+      "lineCount": 8,
+      "id": "item-224"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-225"
+    },
+    {
+      "type": "content",
+      "content": "# 三、輕讀（unstress）\n## 袂特別標記的輕讀\n部份的虛詞、語法功能詞佇句中會讀輕讀，這佇書寫的時陣袂特別標記，毋過嘛仝款袂符合一般變調的規則，**仝款攏是唸較輕唸較短**。\n## 輕聲佮輕讀的關係\n輕讀是**較大的分類**，輕聲是輕讀內底**會特別寫輕聲符號標記的一類**，賰的袂特別寫別个記號。\n\n## a（阿）\n部份名詞頭前的「阿」會讀輕讀，會使比較下跤的例，「阿洲」佮「亞洲」台羅平平是「A-tsiu」，人名的「阿洲」的「a」會讀較輕較短。",
+      "id": "item-226"
+    },
+    {
+      "description": "名詞前綴「a（阿）」的輕讀",
+      "exampleText": "A-tsiu（阿洲）| A-tsiu（亞洲）\nA-bí--á（阿美仔）|A-bí-tso̍k（阿美族）",
+      "lineCount": 2,
+      "id": "item-227"
+    },
+    {
+      "type": "content",
+      "content": "## 第四調 -h 虛詞輕讀\n\n「欲 beh」、「咧 teh/leh」、「閣 koh」、「甲 kah」、「較 khah」五个字攏是第四調 -h 的音節，這五个詞佇句中定定嘛會輕讀變做高平調（嘛有的教材會寫做 4h → 1）",
+      "id": "item-228"
+    },
+    {
+      "description": "練習：分析下跤例句所有的「輕聲/輕讀」的類型",
+      "exampleText": "天欲光矣。\nThinn beh kng--ah.\n阿美一直咧掃塗跤，攏無歇睏。\nA-bí it-ti̍t teh sàu thôo-kha, lóng bô hioh-khùn.\n阿公八十歲矣，猶閣真勇健。\nA-kong peh-tsa̍p huè--ah, iáu-koh tsin ióng-kiānn.\n阿宏仔等咧欲上台，緊張甲一直拚汗。\nA-hông--á tán--leh beh tsiūnn-tâi, kín-tiunn kah it-ti̍t\npiànn-kuānn.\n我哪會攏無想著，去加較了解寡。\nGuá ná ē lóng bô siūnn--tio̍h, khì ke khah liáu-kái--kuá.",
+      "lineCount": 11,
+      "id": "item-229"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-231"
+    },
+    {
+      "type": "content",
+      "content": "## 啥物 siánn-mih\n佇教典的體例當中，「啥物」台羅寫做「siánn-mih」，佇句中嘛會當共看做是頭前寫的第四調h輕讀變調的例，讀做懸平調\n\n※物件 mi̍h-kiānn、物配 mi̍h-phuè(配菜) 是寫做第八調  \n※嘛有人主張寫 siánn-mí，共理解做一般變調就會用得，畢竟佇句尾多數人是讀高降調",
+      "id": "item-232"
+    },
+    {
+      "description": "啥物 siánn-mih",
+      "exampleText": "暗頓有啥物物配\nÀm-tǹg ū siánn-mih mi̍h-phuè? \n伊毋知咧歡喜啥物？\nI m̄ tsai teh huann-hí siánn-mih?",
+      "lineCount": 4,
+      "id": "item-233"
+    },
+    {
+      "type": "content",
+      "content": "## 去 khì\n句中的「去 khì」嘛定定會輕讀做懸平調  \n延伸閱讀：[陳安陽：規則太多了我真的要崩潰了…](https://www.instagram.com/reel/DOAnTpUDtwo/)",
+      "id": "item-234"
+    },
+    {
+      "description": "句中「去 khì」輕讀",
+      "exampleText": "阿母去肉砧買豬肉。\nA-bú khì bah-tiam bé ti-bah.",
+      "lineCount": 2,
+      "id": "item-236"
+    },
+    {
+      "type": "content",
+      "content": "# 四、無聲調\n## 句尾輕聲的第四調 -h 毋是真正的第四調\n--lah、--ooh、--ah、--aih\n\n遮的句尾語氣助詞其實並無真正意義的聲調，只是書寫習慣會共寫做第四調 h 喔！\n\n這款的語氣詞其實欲讀懸讀低，讀長抑是短攏無啥物限制，隨語氣決定。\n\n延伸閱讀：[教典的說明](https://sutian.moe.edu.tw/und-hani/piantsip/tailo-phiautsu-suatbing/#hid3)",
+      "id": "item-237"
+    },
+    {
+      "description": "",
+      "exampleText": "好啊！咱做伙去啦！\nHó--ah! Lán tsò-hué khì--lah\n",
+      "lineCount": 4,
+      "id": "item-238"
+    }
+  ],
+  "lineStyle": "single",
+  "lineSpacingDelta": 0,
+  "fontSize": 24,
+  "pageHeader": "5. 輕聲、隨前輕聲、輕讀、無聲調",
+  "showPageNumbers": true,
+  "autoItemNumbers": true
+}
