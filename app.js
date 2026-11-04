@@ -208,11 +208,38 @@
   const $pageHeader = document.getElementById("pageHeader");
   const $showPageNumbers = document.getElementById("showPageNumbers");
   const $autoItemNumbers = document.getElementById("autoItemNumbers");
+  const $imgurClientId = document.getElementById("imgurClientId");
+  const $imageFilePicker = document.getElementById("imageFilePicker");
   const $infoButton = document.getElementById("infoButton");
   const $infoModal = document.getElementById("infoModal");
   const $infoModalClose = document.getElementById("infoModalClose");
   const $undoButton = document.getElementById("undoButton");
   const $redoButton = document.getElementById("redoButton");
+  const $moreActionsBtn = document.getElementById("moreActionsBtn");
+  const $mobileActionsBackdrop = document.getElementById(
+    "mobileActionsBackdrop",
+  );
+  const $settingsBackdrop = document.getElementById("settingsBackdrop");
+  const $tabEdit = document.getElementById("tabEdit");
+  const $tabPreview = document.getElementById("tabPreview");
+  const $previewFitToggle = document.getElementById("previewFitToggle");
+  const $mobileExportPdf = document.getElementById("mobileExportPdf");
+  const $installAppBtn = document.getElementById("installAppBtn");
+  const $installBanner = document.getElementById("installBanner");
+  const $installBannerBtn = document.getElementById("installBannerBtn");
+  const $installBannerDismiss = document.getElementById("installBannerDismiss");
+  const $installHelpModal = document.getElementById("installHelpModal");
+  const $installHelpClose = document.getElementById("installHelpClose");
+  const $previewWrap = document.querySelector(".preview-wrap");
+  const $previewViewport = document.getElementById("previewViewport");
+  const $previewStage = document.getElementById("previewStage");
+  const $headerActions = document.getElementById("headerActions");
+  const $mobileTemplateList = document.getElementById("mobileTemplateList");
+  const $mobileTextbookList = document.getElementById("mobileTextbookList");
+  const $mobileMenuTemplates = document.getElementById("mobileMenuTemplates");
+  const $mobileMenuTextbooks = document.getElementById("mobileMenuTextbooks");
+  const $backFromTemplates = document.getElementById("backFromTemplates");
+  const $backFromTextbooks = document.getElementById("backFromTextbooks");
 
   function updateHistoryButtonState() {
     if ($undoButton) {
@@ -292,11 +319,13 @@
   function persistProgressIfChanged() {
     try {
       var json = JSON.stringify(getSnapshot());
-      if (json === lastPersistedJson) return;
+      if (json === lastPersistedJson) return true;
       localStorage.setItem(LOCAL_STORAGE_KEY, json);
       lastPersistedJson = json;
+      return true;
     } catch (e) {
       /* 配額、隱私模式等略過 */
+      return false;
     }
   }
 
@@ -315,6 +344,230 @@
       isApplyingHistory = false;
       return false;
     }
+  }
+
+  var IMGUR_CLIENT_ID_KEY = "tai-gi-worksheet-imgur-client-id";
+  var imagePickTargetIndex = -1;
+
+  function isEmbeddedImageUrl(url) {
+    return typeof url === "string" && url.indexOf("data:image/") === 0;
+  }
+
+  function displayImageUrlValue(url) {
+    if (!url) return "";
+    if (isEmbeddedImageUrl(url)) return "";
+    return String(url);
+  }
+
+  function imageUrlStatusText(url) {
+    if (!url) return "";
+    if (isEmbeddedImageUrl(url)) return "已嵌入裝置圖片";
+    if (/^https?:\/\/i\.imgur\.com\//i.test(url)) return "已代入 Imgur 網址";
+    return "";
+  }
+
+  function getImgurClientId() {
+    try {
+      return String(localStorage.getItem(IMGUR_CLIENT_ID_KEY) || "").trim();
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function setImgurClientId(value) {
+    try {
+      var v = String(value || "").trim();
+      if (v) localStorage.setItem(IMGUR_CLIENT_ID_KEY, v);
+      else localStorage.removeItem(IMGUR_CLIENT_ID_KEY);
+    } catch (e) {
+      /* 隱私模式等略過 */
+    }
+  }
+
+  function setImagePickStatus(index, text) {
+    if (!$itemList) return;
+    var wrap = $itemList.querySelector(
+      '.item-block[data-item-index="' + String(index) + '"]',
+    );
+    if (!wrap) return;
+    var statusEl = wrap.querySelector(".item-image-status");
+    if (statusEl) statusEl.textContent = text || "";
+    var pickBtn = wrap.querySelector(".btn-pick-image");
+    if (pickBtn) pickBtn.disabled = !!text && text.indexOf("…") !== -1;
+  }
+
+  function openImageFilePicker(index) {
+    if (!$imageFilePicker || index < 0) return;
+    imagePickTargetIndex = index;
+    $imageFilePicker.value = "";
+    $imageFilePicker.click();
+  }
+
+  function loadImageElementFromFile(file) {
+    return new Promise(function (resolve, reject) {
+      var url = URL.createObjectURL(file);
+      var img = new Image();
+      img.onload = function () {
+        URL.revokeObjectURL(url);
+        resolve(img);
+      };
+      img.onerror = function () {
+        URL.revokeObjectURL(url);
+        reject(new Error("無法讀取這張圖片"));
+      };
+      img.src = url;
+    });
+  }
+
+  function canvasToJpegBlob(canvas, quality) {
+    return new Promise(function (resolve) {
+      canvas.toBlob(
+        function (blob) {
+          resolve(blob || null);
+        },
+        "image/jpeg",
+        quality,
+      );
+    });
+  }
+
+  function blobToDataUrl(blob) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () {
+        resolve(String(reader.result || ""));
+      };
+      reader.onerror = function () {
+        reject(new Error("無法轉換圖片"));
+      };
+      reader.readAsDataURL(blob);
+    });
+  }
+
+  function compressImageFile(file) {
+    return loadImageElementFromFile(file).then(function (img) {
+      var srcW = img.naturalWidth || img.width;
+      var srcH = img.naturalHeight || img.height;
+      if (!srcW || !srcH) {
+        return Promise.reject(new Error("無法讀取這張圖片"));
+      }
+      var attempts = [
+        { maxEdge: 1600, quality: 0.72 },
+        { maxEdge: 1200, quality: 0.58 },
+        { maxEdge: 900, quality: 0.45 },
+      ];
+      function runAttempt(i) {
+        var spec = attempts[i];
+        var scale = Math.min(1, spec.maxEdge / Math.max(srcW, srcH));
+        var cw = Math.max(1, Math.round(srcW * scale));
+        var ch = Math.max(1, Math.round(srcH * scale));
+        var canvas = document.createElement("canvas");
+        canvas.width = cw;
+        canvas.height = ch;
+        var ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, cw, ch);
+        ctx.drawImage(img, 0, 0, cw, ch);
+        return canvasToJpegBlob(canvas, spec.quality).then(function (blob) {
+          if (!blob) {
+            return {
+              blob: null,
+              dataUrl: canvas.toDataURL("image/jpeg", spec.quality),
+            };
+          }
+          return blobToDataUrl(blob).then(function (dataUrl) {
+            return { blob: blob, dataUrl: dataUrl };
+          });
+        }).then(function (result) {
+          var tooBig = result.dataUrl && result.dataUrl.length > 1400000;
+          if (tooBig && i < attempts.length - 1) return runAttempt(i + 1);
+          return result;
+        });
+      }
+      return runAttempt(0);
+    });
+  }
+
+  function uploadImageToImgur(blob, clientId) {
+    var fd = new FormData();
+    fd.append("image", blob);
+    fd.append("type", "file");
+    return fetch("https://api.imgur.com/3/image", {
+      method: "POST",
+      headers: { Authorization: "Client-ID " + clientId },
+      body: fd,
+    }).then(function (res) {
+      return res
+        .json()
+        .catch(function () {
+          return null;
+        })
+        .then(function (json) {
+          if (
+            !res.ok ||
+            !json ||
+            !json.success ||
+            !json.data ||
+            !json.data.link
+          ) {
+            var err = json && json.data && json.data.error;
+            var msg =
+              typeof err === "string"
+                ? err
+                : err && err.message
+                  ? err.message
+                  : "圖床上傳失敗";
+            throw new Error(msg);
+          }
+          return String(json.data.link);
+        });
+    });
+  }
+
+  function applyPickedImageToItem(index, url) {
+    if (!state.items[index] || state.items[index].type !== "image") return;
+    pushUndoSnapshot();
+    state.items[index].imageUrl = url;
+    renderItemList();
+    renderPreview();
+    if (!persistProgressIfChanged() && isEmbeddedImageUrl(url)) {
+      alert(
+        "圖片已顯示佇預覽，毋過瀏覽器暫存空間不足，重新整理了後可能會無去。通改較細的圖，抑是填 Imgur Client ID 上傳成網址。",
+      );
+    }
+  }
+
+  function pickImageForItem(index, file) {
+    if (!file || index < 0 || !state.items[index]) return;
+    if (file.type && file.type.indexOf("image/") !== 0) {
+      alert("請選擇圖片檔。");
+      return;
+    }
+    setImagePickStatus(index, "處理圖片中…");
+    compressImageFile(file)
+      .then(function (result) {
+        var clientId = getImgurClientId();
+        if (!clientId || !result.blob) {
+          applyPickedImageToItem(index, result.dataUrl);
+          return;
+        }
+        setImagePickStatus(index, "上傳圖床中…");
+        return uploadImageToImgur(result.blob, clientId)
+          .then(function (link) {
+            applyPickedImageToItem(index, link);
+          })
+          .catch(function () {
+            applyPickedImageToItem(index, result.dataUrl);
+            setImagePickStatus(
+              index,
+              "圖床上傳失敗，已改嵌入裝置圖片",
+            );
+          });
+      })
+      .catch(function (err) {
+        setImagePickStatus(index, "");
+        alert((err && err.message) || "無法處理這張圖片");
+      });
   }
 
   function undoLastEdit() {
@@ -681,6 +934,17 @@
     if (state.pageHeader) $pageHeader.value = state.pageHeader;
   }
 
+  if ($imgurClientId) {
+    $imgurClientId.value = getImgurClientId();
+    $imgurClientId.addEventListener("change", function () {
+      setImgurClientId($imgurClientId.value);
+    });
+    $imgurClientId.addEventListener("blur", function () {
+      setImgurClientId($imgurClientId.value);
+      $imgurClientId.value = getImgurClientId();
+    });
+  }
+
   if ($showPageNumbers) {
     $showPageNumbers.checked = !!state.showPageNumbers;
     $showPageNumbers.addEventListener("change", function () {
@@ -727,6 +991,7 @@
     }
 
     $infoButton.addEventListener("click", function () {
+      closeMobileActions();
       if ($infoModal.hidden) {
         openInfoModal();
       } else {
@@ -802,6 +1067,50 @@
     state.items.splice(index, 1);
     renderItemList();
     renderPreview();
+  }
+
+  function moveItemByOffset(index, offset) {
+    var toIndex = index + offset;
+    if (index < 0 || toIndex < 0 || toIndex >= state.items.length) return;
+    pushUndoSnapshot();
+    var moved = state.items[index];
+    state.items.splice(index, 1);
+    state.items.splice(toIndex, 0, moved);
+    reorderItemListUpdateFocus(index, toIndex);
+    renderItemList();
+    renderPreview();
+    updatePreviewEditingOutline();
+    scrollPreviewToItem(toIndex);
+  }
+
+  function createMoveButtons(wrap, index, total) {
+    var group = document.createElement("div");
+    group.className = "item-move-btns";
+    var up = document.createElement("button");
+    up.type = "button";
+    up.className = "btn-move-item";
+    up.setAttribute("aria-label", "共這个項目徙去頂面");
+    up.textContent = "↑";
+    up.disabled = index <= 0;
+    up.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveItemByOffset(getBlockIndex(wrap), -1);
+    });
+    var down = document.createElement("button");
+    down.type = "button";
+    down.className = "btn-move-item";
+    down.setAttribute("aria-label", "共這个項目徙去下面");
+    down.textContent = "↓";
+    down.disabled = index >= total - 1;
+    down.addEventListener("click", function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      moveItemByOffset(getBlockIndex(wrap), 1);
+    });
+    group.appendChild(up);
+    group.appendChild(down);
+    return group;
   }
 
   function setItemField(index, field, value) {
@@ -996,6 +1305,7 @@
         });
         row.appendChild(label);
         row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
         row.appendChild(dragHandle);
         wrap.appendChild(row);
         $itemList.appendChild(wrap);
@@ -1080,6 +1390,7 @@
         });
         row.appendChild(label);
         row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
         row.appendChild(dragHandle);
         wrap.appendChild(row);
 
@@ -1089,14 +1400,36 @@
         urlLabel.textContent = "圖片網址";
         var urlInput = document.createElement("input");
         urlInput.type = "text";
-        urlInput.placeholder = "請輸入圖片的網址";
-        urlInput.value = item.imageUrl || item.imagePath || "";
+        urlInput.placeholder = isEmbeddedImageUrl(item.imageUrl || item.imagePath)
+          ? "已嵌入裝置圖片（嘛通改貼網址）"
+          : "請輸入圖片的網址";
+        urlInput.value = displayImageUrlValue(item.imageUrl || item.imagePath);
         urlInput.addEventListener("input", function () {
-          setItemField(getBlockIndex(wrap), "imageUrl", urlInput.value);
+          var idx = getBlockIndex(wrap);
+          setItemField(idx, "imageUrl", urlInput.value);
+          var statusEl = wrap.querySelector(".item-image-status");
+          if (statusEl)
+            statusEl.textContent = imageUrlStatusText(urlInput.value);
         });
         urlRow.appendChild(urlLabel);
         urlRow.appendChild(urlInput);
         wrap.appendChild(urlRow);
+
+        var pickRow = document.createElement("div");
+        pickRow.className = "item-image-actions";
+        var pickBtn = document.createElement("button");
+        pickBtn.type = "button";
+        pickBtn.className = "btn btn-settings btn-pick-image";
+        pickBtn.textContent = "對相簿揀圖";
+        pickBtn.addEventListener("click", function () {
+          openImageFilePicker(getBlockIndex(wrap));
+        });
+        var statusEl = document.createElement("span");
+        statusEl.className = "item-image-status";
+        statusEl.textContent = imageUrlStatusText(item.imageUrl || item.imagePath);
+        pickRow.appendChild(pickBtn);
+        pickRow.appendChild(statusEl);
+        wrap.appendChild(pickRow);
 
         var heightRow = document.createElement("div");
         heightRow.className = "item-field item-field-last";
@@ -1214,6 +1547,7 @@
         textareaRow.appendChild(textarea);
         row.appendChild(label);
         row.appendChild(btn);
+        row.appendChild(createMoveButtons(wrap, i, state.items.length));
         row.appendChild(dragHandle);
         wrap.appendChild(row);
         wrap.appendChild(textareaRow);
@@ -1314,6 +1648,7 @@
       lcRow.appendChild(lcLabel);
       lcRow.appendChild(lcInput);
       lcRow.appendChild(btn);
+      lcRow.appendChild(createMoveButtons(wrap, i, state.items.length));
       lcRow.appendChild(dragHandle);
       wrap.addEventListener("dragover", function (e) {
         if (e.dataTransfer.types.indexOf("text/plain") === -1) return;
@@ -1552,6 +1887,7 @@
     });
     updatePreviewEditingOutline();
     if ($main) $main.scrollTop = savedScrollTop;
+    updatePreviewScale();
   }
 
   $addItem.addEventListener("click", addItem);
@@ -1583,6 +1919,14 @@
         "aria-expanded",
         isCollapsed ? "false" : "true",
       );
+      if (isCollapsed) {
+        document.body.classList.remove("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+      } else {
+        closeMobileActions();
+        document.body.classList.add("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = false;
+      }
     });
   }
 
@@ -1612,18 +1956,47 @@
     if (!$insertMenu || !$insertMenuToggle) return;
     $insertMenu.hidden = false;
     $insertMenuToggle.setAttribute("aria-expanded", "true");
+    positionInsertMenu();
+  }
+
+  function getViewportBottomReservePx() {
+    if (!isCompactLayout()) return 8;
+    var bar = document.querySelector(".mobile-tabbar");
+    if (bar) {
+      var h = bar.getBoundingClientRect().height;
+      if (h > 0) return h + 8;
+    }
+    return 64;
+  }
+
+  /** 依「添新的項目」旁三角形按鈕定位，優先出現佇按鈕下方 */
+  function positionInsertMenu() {
+    if (!$insertMenu || $insertMenu.hidden || !$insertMenuToggle) return;
     var rect = $insertMenuToggle.getBoundingClientRect();
-    var menuTop = rect.bottom + 4;
-    var menuLeft = rect.left;
-    $insertMenu.style.top = menuTop + "px";
-    $insertMenu.style.left = menuLeft + "px";
+    var gap = 4;
+    $insertMenu.style.right = "auto";
+    $insertMenu.style.bottom = "auto";
+    $insertMenu.style.top = rect.bottom + gap + "px";
+    $insertMenu.style.left = rect.left + "px";
     requestAnimationFrame(function () {
+      if ($insertMenu.hidden) return;
       var menuRect = $insertMenu.getBoundingClientRect();
-      if (menuRect.right > window.innerWidth) {
-        $insertMenu.style.left = window.innerWidth - menuRect.width - 8 + "px";
-      }
-      if (menuRect.bottom > window.innerHeight) {
-        $insertMenu.style.top = rect.top - menuRect.height - 4 + "px";
+      var vw = window.innerWidth;
+      var vh = window.innerHeight;
+      var pad = 8;
+      var left = rect.right - menuRect.width;
+      if (left < pad) left = pad;
+      if (left + menuRect.width > vw - pad)
+        left = Math.max(pad, vw - menuRect.width - pad);
+      $insertMenu.style.left = left + "px";
+      var bottomLimit = vh - getViewportBottomReservePx();
+      if (menuRect.bottom > bottomLimit) {
+        var above = rect.top - menuRect.height - gap;
+        if (above >= pad) {
+          $insertMenu.style.top = above + "px";
+        } else {
+          $insertMenu.style.top = pad + "px";
+        }
       }
     });
   }
@@ -1651,6 +2024,16 @@
     $insertMenu.addEventListener("click", function (e) {
       e.stopPropagation();
     });
+    window.addEventListener("resize", function () {
+      if ($insertMenu && !$insertMenu.hidden) positionInsertMenu();
+    });
+    document.addEventListener(
+      "scroll",
+      function () {
+        if ($insertMenu && !$insertMenu.hidden) positionInsertMenu();
+      },
+      true,
+    );
   }
   if ($insertPageBreak) {
     $insertPageBreak.addEventListener("click", function () {
@@ -1664,6 +2047,16 @@
         imageUrl: "",
         imageHeightMm: 100,
       });
+    });
+  }
+  if ($imageFilePicker) {
+    $imageFilePicker.addEventListener("change", function () {
+      var file = $imageFilePicker.files && $imageFilePicker.files[0];
+      var index = imagePickTargetIndex;
+      $imageFilePicker.value = "";
+      imagePickTargetIndex = -1;
+      if (!file || index < 0) return;
+      pickImageForItem(index, file);
     });
   }
   if ($insertContent) {
@@ -1709,6 +2102,7 @@
           .then(function (data) {
             applyImportedSettings(data);
             closeLoadTemplateMenu();
+            if (isCompactLayout()) setMobilePane("preview");
           })
           .catch(function (err) {
             alert(
@@ -1724,6 +2118,12 @@
     });
     $loadTemplateMenu.hidden = false;
     $loadTemplateBtn.setAttribute("aria-expanded", "true");
+    closeMobileActions();
+    if (isCompactLayout()) {
+      $loadTemplateMenu.style.top = "";
+      $loadTemplateMenu.style.left = "";
+      return;
+    }
     var rect = $loadTemplateBtn.getBoundingClientRect();
     $loadTemplateMenu.style.top = rect.bottom + 4 + "px";
     $loadTemplateMenu.style.left = rect.left + "px";
@@ -1772,6 +2172,7 @@
           .then(function (data) {
             applyImportedSettings(data);
             closeLoadTextbookMenu();
+            if (isCompactLayout()) setMobilePane("preview");
           })
           .catch(function (err) {
             alert(
@@ -1787,6 +2188,12 @@
     });
     $loadTextbookMenu.hidden = false;
     $loadTextbookBtn.setAttribute("aria-expanded", "true");
+    closeMobileActions();
+    if (isCompactLayout()) {
+      $loadTextbookMenu.style.top = "";
+      $loadTextbookMenu.style.left = "";
+      return;
+    }
     var rect = $loadTextbookBtn.getBoundingClientRect();
     $loadTextbookMenu.style.top = rect.bottom + 4 + "px";
     $loadTextbookMenu.style.left = rect.left + "px";
@@ -1814,6 +2221,10 @@
     $loadTemplateBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       closeLoadTextbookMenu();
+      if (isCompactLayout()) {
+        openMobileCatalogSubview("templates");
+        return;
+      }
       if ($loadTemplateMenu.hidden) {
         fetch("templates/index.json?v=1.0.4")
           .then(function (r) {
@@ -1843,6 +2254,10 @@
     $loadTextbookBtn.addEventListener("click", function (e) {
       e.stopPropagation();
       closeLoadTemplateMenu();
+      if (isCompactLayout()) {
+        openMobileCatalogSubview("textbooks");
+        return;
+      }
       if ($loadTextbookMenu.hidden) {
         fetch("textbooks/index.json?v=1.0.9")
           .then(function (r) {
@@ -1871,6 +2286,7 @@
   document.addEventListener("click", function () {
     closeLoadTextbookMenu();
     closeLoadTemplateMenu();
+    closeMobileActions();
   });
 
   /** 匯出設定為 JSON 檔 */
@@ -2011,6 +2427,7 @@
 
   if ($importSettings && $importSettingsFile) {
     $importSettings.addEventListener("click", function () {
+      closeMobileActions();
       $importSettingsFile.value = "";
       $importSettingsFile.click();
     });
@@ -2022,6 +2439,7 @@
         try {
           var data = JSON.parse(reader.result);
           applyImportedSettings(data);
+          if (isCompactLayout()) setMobilePane("preview");
         } catch (e) {
           alert("無法解析設定檔，請確認是有效的 JSON 格式。");
         }
@@ -2030,10 +2448,14 @@
     });
   }
   if ($exportSettings) {
-    $exportSettings.addEventListener("click", exportSettingsToJson);
+    $exportSettings.addEventListener("click", function () {
+      closeMobileActions();
+      exportSettingsToJson();
+    });
   }
 
   $exportPdf.addEventListener("click", function () {
+    closeMobileActions();
     var pageEls = $worksheetPreview.querySelectorAll(".worksheet-page");
     var pageArray = Array.prototype.slice.call(pageEls);
     if (pageArray.length === 0) return;
@@ -2208,6 +2630,669 @@
         : Promise.resolve();
     fontsReady.then(runPdfExport).catch(runPdfExport);
   });
+
+  var COMPACT_MQ = "(max-width: 900px)";
+  var previewFitWidth = true;
+  var deferredInstallPrompt = null;
+  var INSTALL_BANNER_KEY = "tai-gi-worksheet-install-banner-dismissed";
+
+  function isCompactLayout() {
+    return window.matchMedia(COMPACT_MQ).matches;
+  }
+
+  function closeSettingsSheet() {
+    if ($settingsPanel) $settingsPanel.classList.add("is-collapsed");
+    if ($settingsToggle) $settingsToggle.setAttribute("aria-expanded", "false");
+    document.body.classList.remove("mobile-settings-open");
+    if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+  }
+
+  function closeMobileActions() {
+    document.body.classList.remove("mobile-actions-open");
+    if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "false");
+    if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = true;
+    resetMobileMenuSubview();
+  }
+
+  function resetMobileMenuSubview() {
+    if ($headerActions) {
+      $headerActions.classList.remove(
+        "is-subview",
+        "is-subview-templates",
+        "is-subview-textbooks",
+      );
+    }
+    if ($mobileMenuTemplates) $mobileMenuTemplates.hidden = true;
+    if ($mobileMenuTextbooks) $mobileMenuTextbooks.hidden = true;
+  }
+
+  function showMobileMenuSubview(kind) {
+    resetMobileMenuSubview();
+    if (!$headerActions) return;
+    $headerActions.classList.add("is-subview");
+    if (kind === "templates") {
+      $headerActions.classList.add("is-subview-templates");
+      if ($mobileMenuTemplates) $mobileMenuTemplates.hidden = false;
+    } else {
+      $headerActions.classList.add("is-subview-textbooks");
+      if ($mobileMenuTextbooks) $mobileMenuTextbooks.hidden = false;
+    }
+  }
+
+  function fillMobileCatalogList(listEl, list, folder) {
+    if (!listEl) return;
+    listEl.innerHTML = "";
+    list.forEach(function (entry) {
+      var name = entry.name || entry.file || "未命名";
+      var file = entry.file;
+      if (!file) return;
+      var li = document.createElement("li");
+      var btn = document.createElement("button");
+      btn.type = "button";
+      btn.textContent = name;
+      btn.addEventListener("click", function (e) {
+        e.stopPropagation();
+        var path = folder + "/" + file;
+        fetch(path)
+          .then(function (r) {
+            if (!r.ok) throw new Error(r.statusText);
+            return r.json();
+          })
+          .then(function (data) {
+            applyImportedSettings(data);
+            closeMobileActions();
+            if (isCompactLayout()) setMobilePane("preview");
+          })
+          .catch(function (err) {
+            alert(
+              "無法載入：「" +
+                name +
+                "」\n" +
+                (err && err.message ? err.message : "請確認檔案存在且可讀取。"),
+            );
+          });
+      });
+      li.appendChild(btn);
+      listEl.appendChild(li);
+    });
+  }
+
+  function openMobileCatalogSubview(kind) {
+    var isTemplates = kind === "templates";
+    var listEl = isTemplates ? $mobileTemplateList : $mobileTextbookList;
+    var path = isTemplates
+      ? "templates/index.json?v=1.0.4"
+      : "textbooks/index.json?v=1.0.9";
+    var fallback = isTemplates ? defaultTemplateList : defaultTextbookList;
+    var folder = isTemplates ? "templates" : "textbooks";
+    showMobileMenuSubview(kind);
+    if (listEl) listEl.innerHTML = "<li>載入中…</li>";
+    fetch(path)
+      .then(function (r) {
+        if (!r.ok) throw new Error("無法取得清單");
+        return r.json();
+      })
+      .then(function (list) {
+        fillMobileCatalogList(
+          listEl,
+          Array.isArray(list) && list.length > 0 ? list : fallback,
+          folder,
+        );
+      })
+      .catch(function () {
+        fillMobileCatalogList(listEl, fallback, folder);
+      });
+  }
+
+  function openMobileActions() {
+    closeSettingsSheet();
+    closeInsertMenu();
+    closeLoadTemplateMenu();
+    closeLoadTextbookMenu();
+    hideInstallBanner();
+    resetMobileMenuSubview();
+    document.body.classList.add("mobile-actions-open");
+    if ($moreActionsBtn) $moreActionsBtn.setAttribute("aria-expanded", "true");
+    if ($mobileActionsBackdrop) $mobileActionsBackdrop.hidden = false;
+  }
+
+  var previewCam = {
+    x: 0,
+    y: 0,
+    scale: 1,
+    fitScale: 1,
+  };
+
+  function clearPreviewTransform() {
+    if ($previewStage) $previewStage.style.transform = "";
+    if ($worksheetPreview) $worksheetPreview.style.transform = "";
+    if ($previewWrap) {
+      $previewWrap.style.width = "";
+      $previewWrap.style.height = "";
+      $previewWrap.classList.remove("is-scaled");
+    }
+  }
+
+  function getPreviewPageSize() {
+    var page = $worksheetPreview
+      ? $worksheetPreview.querySelector(".worksheet-page")
+      : null;
+    if (!page || !$worksheetPreview) return null;
+    return {
+      pageW: page.offsetWidth,
+      pageH: $worksheetPreview.scrollHeight,
+    };
+  }
+
+  function applyPreviewCamera() {
+    if (!$previewStage) return;
+    $previewStage.style.transform =
+      "translate(" +
+      previewCam.x +
+      "px, " +
+      previewCam.y +
+      "px) scale(" +
+      previewCam.scale +
+      ")";
+    $previewStage.style.transformOrigin = "0 0";
+  }
+
+  function clampPreviewCamera() {
+    var size = getPreviewPageSize();
+    var view = $previewViewport;
+    if (!size || !view) return;
+    var viewW = view.clientWidth;
+    var viewH = view.clientHeight;
+    var scaledW = size.pageW * previewCam.scale;
+    var scaledH = size.pageH * previewCam.scale;
+    var pad = 12;
+    if (scaledW <= viewW) {
+      previewCam.x = (viewW - scaledW) / 2;
+    } else {
+      var minX = viewW - scaledW - pad;
+      var maxX = pad;
+      if (previewCam.x < minX) previewCam.x = minX;
+      if (previewCam.x > maxX) previewCam.x = maxX;
+    }
+    if (scaledH <= viewH) {
+      previewCam.y = pad;
+    } else {
+      var minY = viewH - scaledH - pad;
+      var maxY = pad;
+      if (previewCam.y < minY) previewCam.y = minY;
+      if (previewCam.y > maxY) previewCam.y = maxY;
+    }
+  }
+
+  function fitPreviewCamera() {
+    if (!isCompactLayout() || !$previewViewport) {
+      clearPreviewTransform();
+      return;
+    }
+    var size = getPreviewPageSize();
+    if (!size || !size.pageW) return;
+    var viewW = $previewViewport.clientWidth;
+    var viewH = $previewViewport.clientHeight;
+    if (viewW < 40) return;
+    var pad = 16;
+    var scale = (viewW - pad) / size.pageW;
+    if (scale > 1) scale = 1;
+    if (scale < 0.12) scale = 0.12;
+    previewCam.fitScale = scale;
+    previewCam.scale = scale;
+    previewCam.x = (viewW - size.pageW * scale) / 2;
+    previewCam.y = pad / 2;
+    if (size.pageH * scale < viewH) {
+      previewCam.y = Math.max(pad / 2, (viewH - size.pageH * scale) / 2);
+    }
+    applyPreviewCamera();
+    previewFitWidth = true;
+    syncFitToggleLabel();
+  }
+
+  function updatePreviewScale() {
+    if (!isCompactLayout()) {
+      clearPreviewTransform();
+      return;
+    }
+    fitPreviewCamera();
+  }
+
+  function setupPreviewGestures() {
+    if (!$previewViewport) return;
+    var pointers = {};
+    var pinch = null;
+    var lastTap = null;
+    var moved = false;
+
+    function pointerCount() {
+      return Object.keys(pointers).length;
+    }
+
+    function centroidAndSpan() {
+      var ids = Object.keys(pointers);
+      var a = pointers[ids[0]];
+      var b = pointers[ids[1]];
+      return {
+        x: (a.x + b.x) / 2,
+        y: (a.y + b.y) / 2,
+        dist: Math.hypot(b.x - a.x, b.y - a.y) || 1,
+      };
+    }
+
+    function maxPreviewScale() {
+      return Math.max(1, previewCam.fitScale * 3.2);
+    }
+
+    $previewViewport.addEventListener(
+      "pointerdown",
+      function (evt) {
+        if (!isCompactLayout()) return;
+        if (!document.body.classList.contains("mobile-pane-preview")) return;
+        pointers[evt.pointerId] = { x: evt.clientX, y: evt.clientY };
+        moved = false;
+        if (pointerCount() === 2) {
+          var c = centroidAndSpan();
+          pinch = {
+            dist: c.dist,
+            scale: previewCam.scale,
+            x: previewCam.x,
+            y: previewCam.y,
+            cx: c.x,
+            cy: c.y,
+          };
+        } else if (pointerCount() === 1) {
+          pinch = null;
+          $previewViewport.setPointerCapture(evt.pointerId);
+        }
+      },
+    );
+
+    $previewViewport.addEventListener(
+      "pointermove",
+      function (evt) {
+        if (!pointers[evt.pointerId]) return;
+        var prev = pointers[evt.pointerId];
+        var dx = evt.clientX - prev.x;
+        var dy = evt.clientY - prev.y;
+        pointers[evt.pointerId] = { x: evt.clientX, y: evt.clientY };
+        if (Math.abs(dx) + Math.abs(dy) > 2) moved = true;
+
+        if (pointerCount() >= 2 && pinch) {
+          var c = centroidAndSpan();
+          var nextScale = pinch.scale * (c.dist / pinch.dist);
+          var minS = previewCam.fitScale * 0.92;
+          var maxS = maxPreviewScale();
+          if (nextScale < minS) nextScale = minS;
+          if (nextScale > maxS) nextScale = maxS;
+          var rect = $previewViewport.getBoundingClientRect();
+          var lx = pinch.cx - rect.left;
+          var ly = pinch.cy - rect.top;
+          var wx = (lx - pinch.x) / pinch.scale;
+          var wy = (ly - pinch.y) / pinch.scale;
+          previewCam.scale = nextScale;
+          previewCam.x = lx - wx * nextScale;
+          previewCam.y = ly - wy * nextScale;
+          clampPreviewCamera();
+          applyPreviewCamera();
+          previewFitWidth = Math.abs(previewCam.scale - previewCam.fitScale) < 0.02;
+          syncFitToggleLabel();
+        } else if (pointerCount() === 1 && !pinch) {
+          previewCam.x += dx;
+          previewCam.y += dy;
+          clampPreviewCamera();
+          applyPreviewCamera();
+        }
+      },
+    );
+
+    function endPointer(evt) {
+      var wasCount = pointerCount();
+      delete pointers[evt.pointerId];
+      if (pointerCount() < 2) pinch = null;
+      if (wasCount === 1 && !moved) {
+        var now = Date.now();
+        if (
+          lastTap &&
+          now - lastTap.t < 280 &&
+          Math.hypot(evt.clientX - lastTap.x, evt.clientY - lastTap.y) < 28
+        ) {
+          lastTap = null;
+          var size = getPreviewPageSize();
+          if (!size) return;
+          var rect = $previewViewport.getBoundingClientRect();
+          var lx = evt.clientX - rect.left;
+          var ly = evt.clientY - rect.top;
+          var nearFit =
+            Math.abs(previewCam.scale - previewCam.fitScale) < 0.04;
+          if (nearFit) {
+            var target = Math.min(maxPreviewScale(), previewCam.fitScale * 2.1);
+            var wx = (lx - previewCam.x) / previewCam.scale;
+            var wy = (ly - previewCam.y) / previewCam.scale;
+            previewCam.scale = target;
+            previewCam.x = lx - wx * target;
+            previewCam.y = ly - wy * target;
+            previewFitWidth = false;
+          } else {
+            fitPreviewCamera();
+            syncFitToggleLabel();
+            return;
+          }
+          clampPreviewCamera();
+          applyPreviewCamera();
+          syncFitToggleLabel();
+        } else {
+          lastTap = { t: now, x: evt.clientX, y: evt.clientY };
+        }
+      }
+    }
+
+    $previewViewport.addEventListener("pointerup", endPointer);
+    $previewViewport.addEventListener("pointercancel", endPointer);
+
+    $previewViewport.addEventListener(
+      "touchmove",
+      function (evt) {
+        if (!isCompactLayout()) return;
+        if (!document.body.classList.contains("mobile-pane-preview")) return;
+        evt.preventDefault();
+      },
+      { passive: false },
+    );
+
+    $previewViewport.addEventListener(
+      "wheel",
+      function (evt) {
+        if (!isCompactLayout()) return;
+        if (!document.body.classList.contains("mobile-pane-preview")) return;
+        if (evt.ctrlKey || evt.metaKey) {
+          evt.preventDefault();
+          var rect = $previewViewport.getBoundingClientRect();
+          var lx = evt.clientX - rect.left;
+          var ly = evt.clientY - rect.top;
+          var wx = (lx - previewCam.x) / previewCam.scale;
+          var wy = (ly - previewCam.y) / previewCam.scale;
+          var next = previewCam.scale * (evt.deltaY < 0 ? 1.08 : 0.92);
+          var minS = previewCam.fitScale * 0.92;
+          var maxS = maxPreviewScale();
+          if (next < minS) next = minS;
+          if (next > maxS) next = maxS;
+          previewCam.scale = next;
+          previewCam.x = lx - wx * next;
+          previewCam.y = ly - wy * next;
+          clampPreviewCamera();
+          applyPreviewCamera();
+          previewFitWidth =
+            Math.abs(previewCam.scale - previewCam.fitScale) < 0.02;
+          syncFitToggleLabel();
+        } else {
+          previewCam.x -= evt.deltaX;
+          previewCam.y -= evt.deltaY;
+          clampPreviewCamera();
+          applyPreviewCamera();
+          evt.preventDefault();
+        }
+      },
+      { passive: false },
+    );
+  }
+
+  function setMobilePane(pane) {
+    var isPreview = pane === "preview";
+    document.body.classList.toggle("mobile-pane-preview", isPreview);
+    document.body.classList.toggle("mobile-pane-edit", !isPreview);
+    if ($tabEdit) {
+      $tabEdit.classList.toggle("is-active", !isPreview);
+      if (!isPreview) $tabEdit.setAttribute("aria-current", "page");
+      else $tabEdit.removeAttribute("aria-current");
+    }
+    if ($tabPreview) {
+      $tabPreview.classList.toggle("is-active", isPreview);
+      if (isPreview) $tabPreview.setAttribute("aria-current", "page");
+      else $tabPreview.removeAttribute("aria-current");
+    }
+    closeMobileActions();
+    closeSettingsSheet();
+    closeInsertMenu();
+    closeLoadTemplateMenu();
+    closeLoadTextbookMenu();
+    if (isPreview) {
+      requestAnimationFrame(function () {
+        requestAnimationFrame(function () {
+          fitPreviewCamera();
+        });
+      });
+    }
+  }
+
+  function syncFitToggleLabel() {
+    if (!$previewFitToggle) return;
+    $previewFitToggle.setAttribute(
+      "aria-pressed",
+      previewFitWidth ? "true" : "false",
+    );
+    $previewFitToggle.textContent = previewFitWidth ? "適寬" : "原寸";
+  }
+
+  function isStandaloneDisplay() {
+    return (
+      window.matchMedia("(display-mode: standalone)").matches ||
+      window.navigator.standalone === true
+    );
+  }
+
+  function isIosDevice() {
+    return (
+      /iphone|ipad|ipod/i.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1)
+    );
+  }
+
+  function hideInstallBanner() {
+    if ($installBanner) $installBanner.hidden = true;
+  }
+
+  function updateInstallButtonVisibility() {
+    var standalone = isStandaloneDisplay();
+    var canPrompt = !!deferredInstallPrompt;
+    var show = !standalone && (canPrompt || isIosDevice() || isCompactLayout());
+    if ($installAppBtn) $installAppBtn.hidden = !show;
+    if (standalone) hideInstallBanner();
+  }
+
+  function openInstallHelp() {
+    if (!$installHelpModal) return;
+    $installHelpModal.hidden = false;
+    document.body.classList.add("is-modal-open");
+  }
+
+  function closeInstallHelp() {
+    if (!$installHelpModal) return;
+    $installHelpModal.hidden = true;
+    if (
+      $infoModal &&
+      $infoModal.hidden &&
+      !document.body.classList.contains("mobile-actions-open")
+    ) {
+      document.body.classList.remove("is-modal-open");
+    }
+  }
+
+  function promptInstall() {
+    closeMobileActions();
+    if (deferredInstallPrompt && typeof deferredInstallPrompt.prompt === "function") {
+      deferredInstallPrompt.prompt();
+      deferredInstallPrompt.userChoice.then(function () {
+        deferredInstallPrompt = null;
+        updateInstallButtonVisibility();
+        hideInstallBanner();
+      });
+      return;
+    }
+    openInstallHelp();
+  }
+
+  if ($moreActionsBtn) {
+    $moreActionsBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      if (document.body.classList.contains("mobile-actions-open")) {
+        closeMobileActions();
+      } else {
+        openMobileActions();
+      }
+    });
+  }
+  var headerActionsEl = $headerActions;
+  if (headerActionsEl) {
+    headerActionsEl.addEventListener("click", function (e) {
+      e.stopPropagation();
+    });
+  }
+  if ($backFromTemplates) {
+    $backFromTemplates.addEventListener("click", function (e) {
+      e.stopPropagation();
+      resetMobileMenuSubview();
+    });
+  }
+  if ($backFromTextbooks) {
+    $backFromTextbooks.addEventListener("click", function (e) {
+      e.stopPropagation();
+      resetMobileMenuSubview();
+    });
+  }
+  if ($mobileActionsBackdrop) {
+    $mobileActionsBackdrop.addEventListener("click", closeMobileActions);
+  }
+  if ($settingsBackdrop) {
+    $settingsBackdrop.addEventListener("click", closeSettingsSheet);
+  }
+  if ($tabEdit) {
+    $tabEdit.addEventListener("click", function () {
+      setMobilePane("edit");
+    });
+  }
+  if ($tabPreview) {
+    $tabPreview.addEventListener("click", function () {
+      setMobilePane("preview");
+    });
+  }
+  if ($previewFitToggle) {
+    syncFitToggleLabel();
+    $previewFitToggle.addEventListener("click", function () {
+      fitPreviewCamera();
+    });
+  }
+  if ($mobileExportPdf && $exportPdf) {
+    $mobileExportPdf.addEventListener("click", function () {
+      $exportPdf.click();
+    });
+  }
+
+  if ($installAppBtn) {
+    $installAppBtn.addEventListener("click", promptInstall);
+  }
+  if ($installBannerBtn) {
+    $installBannerBtn.addEventListener("click", promptInstall);
+  }
+  if ($installBannerDismiss) {
+    $installBannerDismiss.addEventListener("click", function () {
+      try {
+        localStorage.setItem(INSTALL_BANNER_KEY, "1");
+      } catch (e) {}
+      hideInstallBanner();
+    });
+  }
+  if ($installHelpClose) {
+    $installHelpClose.addEventListener("click", closeInstallHelp);
+  }
+  if ($installHelpModal) {
+    var installHelpBackdrop = $installHelpModal.querySelector(
+      "[data-install-help-close]",
+    );
+    if (installHelpBackdrop) {
+      installHelpBackdrop.addEventListener("click", closeInstallHelp);
+    }
+  }
+
+  window.addEventListener("beforeinstallprompt", function (evt) {
+    evt.preventDefault();
+    deferredInstallPrompt = evt;
+    updateInstallButtonVisibility();
+    var dismissed = false;
+    try {
+      dismissed = localStorage.getItem(INSTALL_BANNER_KEY) === "1";
+    } catch (e) {}
+    if (
+      !dismissed &&
+      !isStandaloneDisplay() &&
+      isCompactLayout() &&
+      $installBanner
+    ) {
+      $installBanner.hidden = false;
+    }
+  });
+
+  window.addEventListener("appinstalled", function () {
+    deferredInstallPrompt = null;
+    hideInstallBanner();
+    updateInstallButtonVisibility();
+  });
+
+  document.addEventListener("keydown", function (evt) {
+    if (evt.key !== "Escape") return;
+    if ($installHelpModal && !$installHelpModal.hidden) {
+      evt.preventDefault();
+      closeInstallHelp();
+      return;
+    }
+    if (document.body.classList.contains("mobile-actions-open")) {
+      evt.preventDefault();
+      closeMobileActions();
+      return;
+    }
+    if (document.body.classList.contains("mobile-settings-open")) {
+      evt.preventDefault();
+      closeSettingsSheet();
+    }
+  });
+
+  var resizeTimer = null;
+  window.addEventListener("resize", function () {
+    if (resizeTimer) clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(function () {
+      if (!isCompactLayout()) {
+        closeMobileActions();
+        document.body.classList.remove("mobile-settings-open");
+        if ($settingsBackdrop) $settingsBackdrop.hidden = true;
+      }
+      updatePreviewScale();
+      updateInstallButtonVisibility();
+    }, 80);
+  });
+
+  setupPreviewGestures();
+  setMobilePane("edit");
+  updateInstallButtonVisibility();
+
+  if (!isStandaloneDisplay() && isIosDevice() && isCompactLayout()) {
+    var iosDismissed = false;
+    try {
+      iosDismissed = localStorage.getItem(INSTALL_BANNER_KEY) === "1";
+    } catch (e) {}
+    if (!iosDismissed && $installBanner) {
+      window.setTimeout(function () {
+        if (!isStandaloneDisplay()) $installBanner.hidden = false;
+      }, 2500);
+    }
+  }
+
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      if (location.protocol !== "http:" && location.protocol !== "https:")
+        return;
+      navigator.serviceWorker.register("sw.js").catch(function () {});
+    });
+  }
 
   /** 沒有 LocalStorage 時改載入 intro 範例（操作介紹）；完成後才開始定期存檔，避免先寫入預設空白狀態 */
   function finishInitialLoad() {
