@@ -1,0 +1,100 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "type": "content",
+      "content": "# 仔前變調\n只要是拄著「仔 á」的頭前，變調的規則會佮一般變調無仝。是另外的規則",
+      "id": "item-187"
+    },
+    {
+      "description": "第三調仔前變調：變高平調 3 → 1",
+      "exampleText": "印仔 ìn-á|印象 ìn-siōng",
+      "lineCount": 2,
+      "id": "item-240"
+    },
+    {
+      "description": "第四調 h 尾仔前變調：變高平調 4h → 1",
+      "exampleText": "鴨仔 ah-á|鴨頭 ah-thâu",
+      "lineCount": 2,
+      "id": "item-241"
+    },
+    {
+      "description": "第七調仔前變調：猶是中平調 7 → 7",
+      "exampleText": "豆仔 tāu-á|豆腐 tāu-hū",
+      "lineCount": 2,
+      "id": "item-242"
+    },
+    {
+      "description": "第八調 h 尾仔前變調：變中平調 8 → 7",
+      "exampleText": "麥仔 be̍h-á|麥片 be̍h-phìnn",
+      "lineCount": 2,
+      "id": "item-244"
+    },
+    {
+      "description": "第八調 ptk 尾仔前變調：變中促音 8 → 中促音",
+      "exampleText": "粒仔 lia̍p-á|粒積 lia̍p-tsik",
+      "lineCount": 2,
+      "id": "item-243"
+    },
+    {
+      "description": "賰的佮一般變調相仝",
+      "exampleText": "尪仔 ang-á|尪姨 ang-î\n蠓仔 báng-á|蠓罩 báng-tà\n窒仔 that-á|窒車 that-tshia\n蝦仔 hê-á|蝦蛄 hê-koo",
+      "lineCount": 6,
+      "id": "item-245"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-246"
+    },
+    {
+      "type": "content",
+      "content": "# 第九調\n- 佇音節中央讀中升調的特殊聲調，干焦會出現佇**合音詞**佮**外來語**\n- 無區分本調變調，看著就是讀中升調\n- 書寫上寫做兩个撇，寫个位置佮一般聲調符號仝款（a̋ i̋ ű e̋ ő őo）\n- 只要揣 `.9` 就會當揣著所有包涵第九調的詞目（[連結](https://sutian.moe.edu.tw/und-hani/tshiau/?lui=tai_su&tsha=.9&iahbe=2&pitsoo=20)）\n\n# 外來語\n- 會當佇外來詞附錄看（[連結](https://sutian.moe.edu.tw/und-hani/huliok/104/)）\n- 多數的外來語攏無漢字，書寫規範就是寫羅馬字。\n- 教典 2025 收錄的「乒乓 phi̋n-phóng」詞目是目前唯一有鬥漢字的第九調音節。\n- 合音詞嘛通常會直接寫羅馬字。\n- 附錄干焦有音譯的詞，佇教育部辭典的體例內底，「[借自X語](https://sutian.moe.edu.tw/und-hani/tshiau/?lui=hua_su&tsha=%E5%80%9F%E8%87%AA)」代表是借音的詞，「[源自日語](https://sutian.moe.edu.tw/und-hani/tshiau/?lui=hua_su&tsha=%E6%BA%90%E8%87%AA%E6%97%A5%E8%AA%9E)」代表是借日文漢字讀做台語音的詞。\n- ※毋是所有的合音詞攏有第九調\n- ※嘛毋是所有的外來語詞攏有第九調\n",
+      "id": "item-248"
+    },
+    {
+      "description": "有第九調的合音詞",
+      "exampleText": "tsa̋u-kiánn／tsőo-kiánn (查某囝 tsa-bóo-kiánn)\ni̋ng (下昏 e-hng)|tsa̋ng (昨昏 tsa-hng)\ntsha̋u-to／tsha̋u (差不多 tsha-put-to)\ntsua̋n-ne／tsua̋n (就按呢 tsiū-án-ne)\nbua̋-kín (無要緊 bô iàu-kín)",
+      "lineCount": 5,
+      "id": "item-247"
+    },
+    {
+      "description": "有第九調的外來語",
+      "exampleText": "a̋i-sat-tsuh／a̋i-sat-tsirh|ba̋i-khín\nia̋n-jín|ha̋n-tóo-luh\nkha̋ng-páng",
+      "lineCount": 3,
+      "id": "item-249"
+    },
+    {
+      "description": "源自日語（日語漢字讀台語音）",
+      "exampleText": "案內 àn-nāi|放送 hòng-sàng\n郵便局 iû-piān-kio̍k|都合 too-ha̍p\n口座 kháu-tsō|看護婦 khàn-hōo-hū",
+      "lineCount": 3,
+      "id": "item-250"
+    },
+    {
+      "type": "pageBreak",
+      "id": "item-251"
+    },
+    {
+      "type": "content",
+      "content": "# 三疊詞變調\n## 台語的形容詞重疊\n- 台語多數的單音節形容詞攏會當重疊使用，表示無仝的程度\n- 程度比較：AAA > A > AA\n- 多數的單音節形容詞攏會使按呢變化，教典干焦有收錄「仁仁仁 jîn-jîn-jîn/lîn-lîn-lîn」\n- 有例外：讚讚讚 tsán tsán tsán、哈哈哈 ha ha ha、濟濟 tsē-tsē（比濟閣較濟）\n- 多音節的形容詞嘛會使重疊做AA型，表示程度弱化\n  - 紅牙紅牙 âng-gê-âng-gê\n  - 臭油餲臭油餲 tshàu-iû-ai tshàu-iû-ai\n  - 臭奶仔羶臭奶仔羶 tshàu-ling-á-hiàn tshàu-ling-á-hiàn\n  - 痟公子仔面痟公子仔面 siáu-kong-tsú-á-bīn siáu-kong-tsú-á-bīn\n## 三疊詞變調\n- 形容詞重複三改是程度加強的意涵\n- 本調若是 1 5 7 8 調，頭一个字會特殊變調，讀做中升調（變第九調）\n- 賰的就遵照一般變調規則",
+      "id": "item-253"
+    },
+    {
+      "description": "形容詞重疊的程度比較",
+      "exampleText": "這蕊花是紅的。\nTsit luí hue sī âng--ê. \n這蕊花紅紅。\nTsit luí hue âng-âng. \n這蕊花紅紅紅。\nTsit luí hue âng-âng-âng.",
+      "lineCount": 6,
+      "id": "item-254"
+    },
+    {
+      "description": "三疊詞變調",
+      "exampleText": "燒燒燒 sio-sio-sio|短短短 té-té-té\n躼躼躼 lò-lò-lò|插插插 tshah-tshah-tshah\n朒朒朒 tsut-tsut-tsut|塗塗塗 thôo-thôo-thôo\n老老老 lāu-lāu-lāu|白白白 pe̍h-pe̍h-pe̍h\n直直直 ti̍t-ti̍t-ti̍t",
+      "lineCount": 5,
+      "id": "item-255"
+    }
+  ],
+  "lineStyle": "single",
+  "lineSpacingDelta": 0,
+  "fontSize": 24,
+  "pageHeader": "6. 仔前變調、第九調、合音詞、外來語、三疊詞變調",
+  "showPageNumbers": true,
+  "autoItemNumbers": true
+}
